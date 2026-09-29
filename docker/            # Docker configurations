@@ -1,0 +1,5 @@
+
+## Getting Started
+1. Copy `.env.example` to `.env`
+2. Review `docs/project-requirements.md`
+3. Follow setup instructions in `docs/architecture.md`

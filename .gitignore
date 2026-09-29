@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+.next/
+dist/
+build/
+
+# Data
+data/raw/*
+data/processed/*
+data/metadata/*
+data/evidence/*
+vector_store/*.index
+vector_store/*.npy
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env.local
+.env.development
+.env.production
+
+# Docker
+docker-compose.override.yml

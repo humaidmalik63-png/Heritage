@@ -1,0 +1,6 @@
+
+## Scalability Considerations
+- Horizontal scaling of API servers
+- FAISS index sharding
+- CDN for static assets
+- Asynchronous processing for heavy operations
