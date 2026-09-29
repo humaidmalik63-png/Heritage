@@ -37,3 +37,6 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+# Aider local files
+.aider.*
