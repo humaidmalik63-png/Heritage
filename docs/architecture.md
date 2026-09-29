@@ -40,4 +40,15 @@
 - User interactions
 - Audit logs
 
-## Data Flow
+## Data Management Foundation (Phase 2)
+
+### Data Schemas
+- **Metadata Schema** (`data/metadata/schema.json`): Defines structure for heritage image metadata including location, dates, cultural context, and conservation status
+- **Evidence Schema** (`data/evidence/schema.json`): Defines structure for supporting documents including authors, publication dates, and relevance scores
+
+### Validation System
+- **Metadata Validation** (`scripts/validate_metadata.py`): Validates metadata records against JSON schema
+- **Evidence Validation** (`scripts/validate_evidence.py`): Validates evidence records against JSON schema
+- **Test Suite** (`tests/test_validation.py`): Automated tests for validation scripts
+
+### Directory Conventions
