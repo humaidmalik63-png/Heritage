@@ -1,0 +1,178 @@
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "Heritage" [ref=e7] [cursor=pointer]:
+        - /url: "#home"
+      - navigation "Primary" [ref=e10]:
+        - link "Discover" [ref=e11] [cursor=pointer]:
+          - /url: "#home"
+        - link "Recognition" [ref=e12] [cursor=pointer]:
+          - /url: "#recognition"
+        - link "Heritage" [ref=e13] [cursor=pointer]:
+          - /url: "#heritage"
+        - link "About" [ref=e14] [cursor=pointer]:
+          - /url: "#about"
+      - generic [ref=e15]:
+        - link "Identify" [ref=e16] [cursor=pointer]:
+          - /url: "#recognition"
+        - button "Open menu" [ref=e17] [cursor=pointer]
+  - main [ref=e20]:
+    - generic [ref=e27]:
+      - generic [ref=e28]: Visual AI for heritage
+      - heading "Recognise the stories of place." [level=1] [ref=e31]: Recognise thestories of place.
+      - paragraph [ref=e33]: Point your camera at a monument and let the timeless wisdom emerge from the fusion of ancient architecture and modern AI intelligence. Each frame becomes a portal to history, geometry, and narrative — bridging millennia through pixels.
+      - generic [ref=e35]:
+        - link "Identify a site" [ref=e36] [cursor=pointer]:
+          - /url: "#recognition"
+        - link "Explore the catalogue" [ref=e37] [cursor=pointer]:
+          - /url: "#heritage"
+      - generic [ref=e38]: Scroll to begin
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - text: Artificial Intelligence
+        - heading "Recognise. Understand. Connect." [level=2] [ref=e43]
+        - paragraph [ref=e44]: Advanced visual AI identifies heritage sites from photographs, extracting their stories, evidence, and cultural significance. Powered by machine learning and verified by historical scholarship.
+      - generic [ref=e45]:
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - button "Upload an image of a heritage site" [ref=e49]
+            - generic [ref=e50]:
+              - heading "Upload Heritage Image" [level=3] [ref=e56]
+              - paragraph [ref=e57]: Drag & drop or click to browse
+              - paragraph [ref=e58]: Supports JPG, PNG, WebP, HEIC — max 10 MB
+          - generic [ref=e59]:
+            - text: Optional research question
+            - textbox "Optional research question" [ref=e60]:
+              - /placeholder: e.g. When was this built? Who designed it? What historical events surround this structure?
+            - generic [ref=e61]:
+              - button "Why?" [ref=e62] [cursor=pointer]
+              - button "How?" [ref=e63] [cursor=pointer]
+              - button "What?" [ref=e64] [cursor=pointer]
+              - button "When?" [ref=e65] [cursor=pointer]
+          - button "Identify" [disabled] [ref=e67] [cursor=pointer]
+        - generic [ref=e72]:
+          - heading "Ready to identify" [level=3] [ref=e78]
+          - paragraph [ref=e79]: Upload a heritage site image to begin the analysis. Our AI will recognize the monument, provide confidence scores, and uncover its historical story.
+    - generic [ref=e81]:
+      - generic [ref=e83]:
+        - text: Experience Heritage
+        - heading "Timeless monuments that endure" [level=2] [ref=e84]
+        - paragraph [ref=e85]: Each site tells a story of human achievement, architectural brilliance, and cultural significance — from ancient wonders to living testaments of our shared heritage.
+      - generic [ref=e87]:
+        - article [ref=e89]:
+          - generic:
+            - img "Taj Mahal"
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - heading "Taj Mahal" [level=3] [ref=e92]
+              - text: "1632"
+            - paragraph [ref=e93]: An ivory-white marble mausoleum commissioned by Emperor Shah Jahan in memory of his wife Mumtaz Mahal. A masterpiece of Islamic architecture and UNESCO World Heritage site.
+            - paragraph [ref=e94]: Agra, India
+        - article [ref=e96]:
+          - generic:
+            - img "Colosseum"
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - heading "Colosseum" [level=3] [ref=e99]
+              - text: 70 AD
+            - paragraph [ref=e100]: The largest ancient amphitheatre ever built, capable of seating 50,000–80,000 spectators. An enduring symbol of Roman engineering and entertainment culture.
+            - paragraph [ref=e101]: Rome, Italy
+        - article [ref=e103]:
+          - generic:
+            - img "Machu Picchu"
+          - generic [ref=e104]:
+            - generic [ref=e105]:
+              - heading "Machu Picchu" [level=3] [ref=e106]
+              - text: "1450"
+            - paragraph [ref=e107]: A 15th-century Incan citadel set high in the Andes Mountains, a masterpiece of urban planning, astronomy, and stone masonry.
+            - paragraph [ref=e108]: Cusco, Peru
+        - article [ref=e110]:
+          - generic:
+            - img "Great Wall"
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - heading "Great Wall" [level=3] [ref=e113]
+              - text: 7th century BC
+            - paragraph [ref=e114]: A series of fortifications stretching over 13,000 miles, built to protect against invasions. The longest and most ambitious military structure in history.
+            - paragraph [ref=e115]: China
+        - article [ref=e117]:
+          - generic:
+            - img "Petra"
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - heading "Petra" [level=3] [ref=e120]
+              - text: 312 BC
+            - paragraph [ref=e121]: A rocky city carved directly into red sandstone cliffs, capital of the Nabataean Kingdom. An archaeological wonder of the ancient world.
+            - paragraph [ref=e122]: Ma'an, Jordan
+        - article [ref=e124]:
+          - generic:
+            - img "Angkor Wat"
+          - generic [ref=e125]:
+            - generic [ref=e126]:
+              - heading "Angkor Wat" [level=3] [ref=e127]
+              - text: "1150"
+            - paragraph [ref=e128]: The largest religious monument in the world, originally built as a Hindu temple dedicated to Vishnu. A masterpiece of Khmer architecture.
+            - paragraph [ref=e129]: Siem Reap, Cambodia
+    - generic [ref=e134]:
+      - text: Global Legacy
+      - heading "Monuments that span continents" [level=2] [ref=e135]: Monuments that spancontinents
+      - paragraph [ref=e136]: From the Indus Valley to the Andes, humanity's greatest achievements are scattered across the Earth. The interactive globe reveals their ancient wisdom and geographic beauty.
+      - generic [ref=e137]:
+        - generic [ref=e138]: Taj Mahal
+        - generic [ref=e139]: Colosseum
+        - generic [ref=e140]: Machu Picchu
+        - generic [ref=e141]: Great Wall
+        - generic [ref=e142]: Petra
+        - generic [ref=e143]: Angkor Wat
+        - generic [ref=e144]: Pyramids of Giza
+        - generic [ref=e145]: Christ the Redeemer
+    - generic [ref=e152]:
+      - generic [ref=e153]:
+        - text: Our Mission
+        - heading "Preserving the past for future generations" [level=2] [ref=e154]: Preserving the pastfor future generations
+        - paragraph [ref=e155]: We believe that understanding our shared heritage strengthens cultural identity and promotes global peace. Through rigorous documentation and accessible technology, we make historical knowledge available to everyone.
+      - generic [ref=e156]:
+        - generic [ref=e159]:
+          - generic [ref=e160]:
+            - text: 📚
+            - heading "Document" [level=3] [ref=e161]
+          - paragraph [ref=e162]: Every recognised site is linked to open academic and institutional sources. We verify historical accuracy and cite primary references for transparency.
+        - generic [ref=e165]:
+          - generic [ref=e166]:
+            - text: 🛡️
+            - heading "Preserve" [level=3] [ref=e167]
+          - paragraph [ref=e168]: We avoid geolocation noise that could expose fragile or unguarded sites to over-tourism. Preservation includes digital conservation and controlled access.
+        - generic [ref=e171]:
+          - generic [ref=e172]:
+            - text: 🌐
+            - heading "Share" [level=3] [ref=e173]
+          - paragraph [ref=e174]: The catalogue grows through verified community contributions. Anyone can submit images or information, subject to peer review.
+        - generic [ref=e177]:
+          - generic [ref=e178]:
+            - text: 👨‍🏫
+            - heading "Teach" [level=3] [ref=e179]
+          - paragraph [ref=e180]: Each entry includes interactive timelines, architectural analysis, and cultural context. Educational resources accompany every discovery.
+      - generic [ref=e181]:
+        - generic [ref=e183]:
+          - generic [ref=e184]: 🌍
+          - generic [ref=e185]: "12"
+          - paragraph [ref=e186]: Countries represented
+        - generic [ref=e188]:
+          - generic [ref=e189]: 🏛️
+          - generic [ref=e190]: 40++
+          - paragraph [ref=e191]: Heritage sites catalogued
+        - generic [ref=e193]:
+          - generic [ref=e194]: 📊
+          - generic [ref=e195]: 98%
+          - paragraph [ref=e196]: Mean confidence on benchmark set
+        - generic [ref=e198]:
+          - generic [ref=e199]: 📖
+          - generic [ref=e200]: 500++
+          - paragraph [ref=e201]: Research papers referenced
+  - contentinfo [ref=e202]:
+    - generic [ref=e204]:
+      - generic [ref=e205]: Heritage Discovery
+      - paragraph [ref=e210]: Recognise the stories of place.
+      - paragraph [ref=e212]: © 2026 Heritage Discovery. Built with care.

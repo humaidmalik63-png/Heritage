@@ -1,0 +1,92 @@
+[
+  {
+    "image_id": "taj_mahal_01",
+    "site_id": "taj_mahal",
+    "filename": "taj_mahal_01.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "taj_mahal_02",
+    "site_id": "taj_mahal",
+    "filename": "taj_mahal_02.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "taj_mahal_03",
+    "site_id": "taj_mahal",
+    "filename": "taj_mahal_03.jpg",
+    "split": "test"
+  },
+  {
+    "image_id": "qutub_minar_01",
+    "site_id": "qutub_minar",
+    "filename": "qutub_minar_01.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "qutub_minar_02",
+    "site_id": "qutub_minar",
+    "filename": "qutub_minar_02.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "qutub_minar_03",
+    "site_id": "qutub_minar",
+    "filename": "qutub_minar_03.jpg",
+    "split": "test"
+  },
+  {
+    "image_id": "red_fort_01",
+    "site_id": "red_fort",
+    "filename": "red_fort_01.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "red_fort_02",
+    "site_id": "red_fort",
+    "filename": "red_fort_02.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "red_fort_03",
+    "site_id": "red_fort",
+    "filename": "red_fort_03.jpg",
+    "split": "test"
+  },
+  {
+    "image_id": "ajanta_caves_01",
+    "site_id": "ajanta_caves",
+    "filename": "ajanta_caves_01.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "ajanta_caves_02",
+    "site_id": "ajanta_caves",
+    "filename": "ajanta_caves_02.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "ajanta_caves_03",
+    "site_id": "ajanta_caves",
+    "filename": "ajanta_caves_03.jpg",
+    "split": "test"
+  },
+  {
+    "image_id": "konark_sun_temple_01",
+    "site_id": "konark_sun_temple",
+    "filename": "konark_sun_temple_01.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "konark_sun_temple_02",
+    "site_id": "konark_sun_temple",
+    "filename": "konark_sun_temple_02.jpg",
+    "split": "train"
+  },
+  {
+    "image_id": "konark_sun_temple_03",
+    "site_id": "konark_sun_temple",
+    "filename": "konark_sun_temple_03.jpg",
+    "split": "test"
+  }
+]

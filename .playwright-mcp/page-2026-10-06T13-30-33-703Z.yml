@@ -1,0 +1,206 @@
+- generic [ref=f6e4]:
+  - navigation [ref=f6e5]:
+    - generic [ref=f6e6]:
+      - generic [ref=f6e7]:
+        - generic [ref=f6e8]: H
+        - generic [ref=f6e10]: HACKER
+      - button [ref=f6e11]
+  - generic [ref=f6e18]:
+    - generic [ref=f6e19]: AI • HERITAGE • CULTURAL DISCOVERY
+    - heading "See the Past. Understand the Story." [level=1] [ref=f6e21]: See the Past.Understand the Story.
+    - paragraph [ref=f6e22]: An AI-powered visual heritage platform that recognizes historic places and connects them with grounded cultural knowledge.
+    - generic [ref=f6e23]:
+      - button "Explore Heritage" [ref=f6e24]
+      - button "Recognize a Landmark" [ref=f6e27]
+  - main [ref=f6e30]:
+    - generic [ref=f6e33]:
+      - generic [ref=f6e34]:
+        - paragraph [ref=f6e35]: AI • HERITAGE • CULTURAL DISCOVERY
+        - heading "Explore Cultural Memory" [level=2] [ref=f6e36]
+        - paragraph [ref=f6e37]: Discover India's rich heritage through AI-powered recognition and contextual knowledge
+      - generic [ref=f6e38]:
+        - textbox "Search heritage sites..." [ref=f6e43]
+        - combobox [ref=f6e47] [cursor=pointer]:
+          - option "All" [selected]
+          - option "Monument"
+          - option "Temple"
+          - option "Cave Temple"
+          - option "Stupa"
+          - option "Archaeological Site"
+          - option "Mausoleum"
+    - generic [ref=f6e57]:
+      - generic [ref=f6e58]:
+        - paragraph [ref=f6e59]: VISUAL RECOGNITION
+        - heading "Recognize the Unseen" [level=2] [ref=f6e60]
+        - paragraph [ref=f6e61]: Upload an image of any heritage site and discover its history, significance, and cultural context
+      - button "Upload Image to Recognize" [ref=f6e63]
+    - generic [ref=f6e70]:
+      - generic [ref=f6e71]:
+        - heading "Heritage Across India" [level=2] [ref=f6e72]
+        - paragraph [ref=f6e73]: Explore our curated collection of heritage sites across the Indian subcontinent.
+      - generic [ref=f6e75]:
+        - generic [ref=f6e76]:
+          - generic [ref=f6e77]:
+            - paragraph [ref=f6e82]: 10K+
+            - paragraph [ref=f6e83]: Sites Recognized
+          - generic [ref=f6e84]:
+            - paragraph [ref=f6e89]: 500+
+            - paragraph [ref=f6e90]: Heritage Locations
+          - generic [ref=f6e91]:
+            - paragraph [ref=f6e96]: 95%
+            - paragraph [ref=f6e97]: Accuracy Rate
+          - generic [ref=f6e98]:
+            - paragraph [ref=f6e103]: 50K+
+            - paragraph [ref=f6e104]: Cultural Stories
+        - generic [ref=f6e105]:
+          - paragraph [ref=f6e106]: INTERACTIVE MAP
+          - heading "Heritage Across India" [level=2] [ref=f6e107]
+        - generic [ref=f6e112]:
+          - paragraph [ref=f6e113]: Heritage Across India
+          - paragraph [ref=f6e114]: Hover over markers to explore
+    - generic [ref=f6e116]:
+      - generic [ref=f6e117]:
+        - heading "Every Monument Has a Story" [level=2] [ref=f6e118]
+        - paragraph [ref=f6e119]: Understanding requires more than recognition — it demands context, evidence, and nuance.
+      - generic [ref=f6e121]:
+        - generic [ref=f6e122]:
+          - paragraph [ref=f6e123]: HISTORICAL JOURNEY
+          - heading "Every Monument Has a Story" [level=2] [ref=f6e124]
+          - paragraph [ref=f6e125]: Trace the magnificent journey of Indian heritage through centuries of art, architecture, and culture
+        - generic [ref=f6e127]:
+          - generic [ref=f6e130]:
+            - text: 2000 BCE
+            - heading "Ancient Foundations" [level=3] [ref=f6e131]
+            - paragraph [ref=f6e132]: Early civilizations build monumental structures that would become heritage sites
+          - generic [ref=f6e139]:
+            - text: 300 CE
+            - heading "Cave Temples Carved" [level=3] [ref=f6e140]
+            - paragraph [ref=f6e141]: Ajanta and Ellora caves created as centers of Buddhist learning and art
+          - generic [ref=f6e148]:
+            - text: 1192 CE
+            - heading "Qutub Minar Built" [level=3] [ref=f6e149]
+            - paragraph [ref=f6e150]: Beginning of Indo-Islamic architecture in India with the Qutub Minar
+          - generic [ref=f6e156]:
+            - text: 1501 CE
+            - heading "Vijayanagara Empire" [level=3] [ref=f6e157]
+            - paragraph [ref=f6e158]: Construction of Hampi complex becomes one of South India's greatest achievements
+          - generic [ref=f6e165]:
+            - text: 1632 CE
+            - heading "Taj Mahal Completed" [level=3] [ref=f6e166]
+            - paragraph [ref=f6e167]: Shah Jahan completes the masterpiece of Mughal architecture
+          - generic [ref=f6e176]:
+            - text: 2024 CE
+            - heading "AI-Powered Discovery" [level=3] [ref=f6e177]
+            - paragraph [ref=f6e178]: Modern technology enables new ways to discover and understand heritage
+        - generic [ref=f6e183]:
+          - generic [ref=f6e184]:
+            - heading "Architectural Significance" [level=3] [ref=f6e188]
+            - paragraph [ref=f6e189]: Each site represents unique architectural innovations that influenced civilizations across regions and centuries.
+          - generic [ref=f6e190]:
+            - heading "Cultural Context" [level=3] [ref=f6e196]
+            - paragraph [ref=f6e197]: Understanding the stories behind monuments helps preserve not just structures, but the living heritage they represent.
+          - generic [ref=f6e198]:
+            - heading "Preservation Status" [level=3] [ref=f6e202]
+            - paragraph [ref=f6e203]: Some sites face threats from climate change and urbanization, making documentation and awareness critical.
+      - generic [ref=f6e204]:
+        - heading "How It Works" [level=3] [ref=f6e205]
+        - generic [ref=f6e206]:
+          - generic [ref=f6e208]:
+            - generic [ref=f6e209]: I
+            - generic [ref=f6e211]: IMAGE
+          - generic [ref=f6e213]:
+            - generic [ref=f6e214]: V
+            - generic [ref=f6e216]: VISUAL EMBEDDING
+          - generic [ref=f6e218]:
+            - generic [ref=f6e219]: H
+            - generic [ref=f6e221]: HERITAGE MATCH
+          - generic [ref=f6e223]:
+            - generic [ref=f6e224]: C
+            - generic [ref=f6e226]: CONFIDENCE CHECK
+          - generic [ref=f6e228]:
+            - generic [ref=f6e229]: C
+            - generic [ref=f6e231]: CULTURAL INFO
+      - generic [ref=f6e232]:
+        - heading "Our Principles" [level=3] [ref=f6e233]
+        - generic [ref=f6e234]:
+          - generic [ref=f6e235]:
+            - heading "Visual Intelligence" [level=3] [ref=f6e239]
+            - paragraph [ref=f6e240]: Advanced neural embeddings capture architectural nuances invisible to the human eye, from cornice profiles to masonry patterns.
+          - generic [ref=f6e241]:
+            - heading "Evidence Grounding" [level=3] [ref=f6e247]
+            - paragraph [ref=f6e248]: Every recognition result is anchored to verified cultural knowledge — periods, locations, and historical context drawn from scholarly sources.
+          - generic [ref=f6e249]:
+            - heading "Uncertainty Awareness" [level=3] [ref=f6e253]
+            - paragraph [ref=f6e254]: The system explicitly surfaces ambiguity rather than fabricating certainty. Low-confidence results prompt for more evidence, not speculation.
+      - generic [ref=f6e257]:
+        - generic [ref=f6e258]:
+          - paragraph [ref=f6e259]: RESPONSIBLE AI
+          - heading "When the AI Isn't Sure" [level=2] [ref=f6e260]
+          - paragraph [ref=f6e261]: Our system is designed to acknowledge uncertainty rather than provide false confidence
+        - generic [ref=f6e262]:
+          - generic [ref=f6e267]:
+            - heading "Multiple Possible Matches Detected" [level=3] [ref=f6e268]
+            - paragraph [ref=f6e269]: The visual features suggest more than one heritage site
+          - generic [ref=f6e270]:
+            - generic [ref=f6e271]:
+              - generic [ref=f6e272]: Confidence Level
+              - generic [ref=f6e273]: 62%
+            - paragraph [ref=f6e274]: This level of uncertainty requires additional verification
+          - paragraph [ref=f6e276]:
+            - strong [ref=f6e277]: "Recommendation:"
+            - text: Additional visual evidence is recommended to improve accuracy. Consider uploading images from different angles or time periods.
+          - generic [ref=f6e278]:
+            - button "View All Candidates" [ref=f6e279]
+            - button "Try Another Image" [ref=f6e282]
+        - generic [ref=f6e288]:
+          - generic [ref=f6e289]:
+            - generic [ref=f6e290]: ✦
+            - heading "Multi-Candidate Display" [level=3] [ref=f6e292]
+            - paragraph [ref=f6e293]: When confidence is low, all plausible matches are shown for user review
+          - generic [ref=f6e294]:
+            - generic [ref=f6e295]: ✦
+            - heading "Confidence Thresholds" [level=3] [ref=f6e297]
+            - paragraph [ref=f6e298]: Clear visual indicators show when results should be verified
+          - generic [ref=f6e299]:
+            - generic [ref=f6e300]: ✦
+            - heading "Guidance Prompts" [level=3] [ref=f6e302]
+            - paragraph [ref=f6e303]: Helpful suggestions guide users toward more accurate recognition
+    - generic [ref=f6e307]:
+      - generic [ref=f6e308]: Start Your Journey
+      - heading "Preserve What We Can See. Understand What We Inherit." [level=2] [ref=f6e312]: Preserve What We Can See.Understand What We Inherit.
+      - paragraph [ref=f6e313]: Join us in discovering, documenting, and preserving the world's cultural heritage through the power of artificial intelligence
+      - generic [ref=f6e314]:
+        - button "Start Exploring" [ref=f6e315]
+        - button "Learn More" [ref=f6e318]
+    - generic [ref=f6e320]:
+      - generic [ref=f6e321]:
+        - generic [ref=f6e322]:
+          - generic [ref=f6e323]:
+            - generic [ref=f6e324]: H
+            - generic [ref=f6e326]: HACKER
+          - paragraph [ref=f6e327]: Visual Heritage Recognition & Cultural Discovery
+          - generic [ref=f6e328]:
+            - button [ref=f6e329]
+            - button [ref=f6e333]
+            - button [ref=f6e336]
+        - generic [ref=f6e340]:
+          - heading "Explore" [level=4] [ref=f6e341]
+          - list [ref=f6e342]:
+            - listitem [ref=f6e343]:
+              - button "Discover" [ref=f6e344]
+            - listitem [ref=f6e347]:
+              - button "Recognize" [ref=f6e348]
+            - listitem [ref=f6e351]:
+              - button "Heritage Map" [ref=f6e352]
+            - listitem [ref=f6e355]:
+              - button "About" [ref=f6e356]
+        - generic [ref=f6e359]:
+          - heading "Technology" [level=4] [ref=f6e360]
+          - list [ref=f6e361]:
+            - listitem [ref=f6e362]: React + TypeScript
+            - listitem [ref=f6e363]: Three.js / R3F
+            - listitem [ref=f6e364]: Framer Motion
+            - listitem [ref=f6e365]: Tailwind CSS
+      - generic [ref=f6e366]:
+        - paragraph [ref=f6e367]: Built for intelligent cultural discovery.
+        - paragraph [ref=f6e368]: © 2024 HACKER. All rights reserved.

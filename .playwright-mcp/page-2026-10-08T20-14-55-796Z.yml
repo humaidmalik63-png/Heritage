@@ -1,0 +1,155 @@
+- generic [ref=f1e3]:
+  - link "Skip to main content" [ref=f1e4] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=f1e5]:
+    - generic [ref=f1e6]:
+      - link "Heritage" [ref=f1e7] [cursor=pointer]:
+        - /url: "#home"
+      - navigation "Primary" [ref=f1e10]:
+        - link "Discover" [ref=f1e11] [cursor=pointer]:
+          - /url: "#home"
+        - link "Recognition" [ref=f1e12] [cursor=pointer]:
+          - /url: "#recognition"
+        - link "Heritage" [ref=f1e13] [cursor=pointer]:
+          - /url: "#heritage"
+        - link "About" [ref=f1e14] [cursor=pointer]:
+          - /url: "#about"
+      - generic [ref=f1e15]:
+        - link "Identify" [ref=f1e16] [cursor=pointer]:
+          - /url: "#recognition"
+        - button "Open menu" [ref=f1e17] [cursor=pointer]
+  - main [ref=f1e20]:
+    - generic [ref=f1e26]:
+      - generic [ref=f1e27]:
+        - generic [ref=f1e28]: Visual AI for heritage
+        - heading "Recognise thestories of place." [level=1] [ref=f1e31]
+        - paragraph [ref=f1e33]: Point your camera at a monument and learn what it is, where it came from, and why it matters — in seconds, not searches.
+        - generic [ref=f1e35]:
+          - link "Identify a site" [ref=f1e36] [cursor=pointer]:
+            - /url: "#recognition"
+          - link "Explore the catalogue" [ref=f1e39] [cursor=pointer]:
+            - /url: "#heritage"
+      - generic [ref=f1e40]: Scroll
+    - generic [ref=f1e42]:
+      - generic [ref=f1e43]:
+        - text: Recognition
+        - heading "What are you looking at?" [level=2] [ref=f1e44]
+        - paragraph [ref=f1e45]: Upload a photo and the model matches it against a curated heritage catalogue, returning the site, confidence, and an evidence-backed answer to any question.
+      - generic [ref=f1e46]:
+        - generic [ref=f1e48]:
+          - generic [ref=f1e49]:
+            - button "Upload an image of a heritage site" [ref=f1e50]
+            - generic [ref=f1e51]:
+              - paragraph [ref=f1e54]: Drop an image or click to browse
+              - paragraph [ref=f1e55]: JPG, PNG, WebP — max 10 MB
+          - generic [ref=f1e56]:
+            - text: Optional question
+            - textbox "Optional question" [ref=f1e57]:
+              - /placeholder: e.g. When was this built? Who designed it?
+          - button "Identify↗" [disabled] [ref=f1e59] [cursor=pointer]
+        - paragraph [ref=f1e65]: Upload an image to see results here.
+    - generic [ref=f1e67]:
+      - generic [ref=f1e68]:
+        - text: Catalogue
+        - heading "Heritage sites" [level=2] [ref=f1e69]
+        - paragraph [ref=f1e70]: A living collection. Each site carries verified references and traces of its own story.
+      - generic [ref=f1e71]:
+        - article [ref=f1e73]:
+          - generic:
+            - img "Taj Mahal"
+          - generic [ref=f1e74]:
+            - generic [ref=f1e75]:
+              - heading "Taj Mahal" [level=3] [ref=f1e76]
+              - text: "1632"
+            - paragraph [ref=f1e77]: An ivory-white marble mausoleum commissioned by Emperor Shah Jahan in memory of his wife Mumtaz Mahal.
+            - paragraph [ref=f1e78]: Agra, India
+        - article [ref=f1e80]:
+          - generic:
+            - img "Colosseum"
+          - generic [ref=f1e81]:
+            - generic [ref=f1e82]:
+              - heading "Colosseum" [level=3] [ref=f1e83]
+              - text: 70 AD
+            - paragraph [ref=f1e84]: The largest ancient amphitheatre ever built, capable of seating 50,000–80,000 spectators.
+            - paragraph [ref=f1e85]: Rome, Italy
+        - article [ref=f1e87]:
+          - generic:
+            - img "Machu Picchu"
+          - generic [ref=f1e88]:
+            - generic [ref=f1e89]:
+              - heading "Machu Picchu" [level=3] [ref=f1e90]
+              - text: "1450"
+            - paragraph [ref=f1e91]: A 15th-century Incan citadel set high in the Andes Mountains, a masterpiece of engineering.
+            - paragraph [ref=f1e92]: Cusco, Peru
+        - article [ref=f1e94]:
+          - generic:
+            - img "Great Wall"
+          - generic [ref=f1e95]:
+            - generic [ref=f1e96]:
+              - heading "Great Wall" [level=3] [ref=f1e97]
+              - text: 7th century BC
+            - paragraph [ref=f1e98]: A series of fortifications stretching over 13,000 miles, built to protect against invasions.
+            - paragraph [ref=f1e99]: China
+        - article [ref=f1e101]:
+          - generic:
+            - img "Petra"
+          - generic [ref=f1e102]:
+            - generic [ref=f1e103]:
+              - heading "Petra" [level=3] [ref=f1e104]
+              - text: 312 BC
+            - paragraph [ref=f1e105]: A rocky city carved directly into red sandstone cliffs, capital of the Nabataean Kingdom.
+            - paragraph [ref=f1e106]: Ma'an, Jordan
+        - article [ref=f1e108]:
+          - generic:
+            - img "Angkor Wat"
+          - generic [ref=f1e109]:
+            - generic [ref=f1e110]:
+              - heading "Angkor Wat" [level=3] [ref=f1e111]
+              - text: "1150"
+            - paragraph [ref=f1e112]: The largest religious monument in the world, originally built as a Hindu temple.
+            - paragraph [ref=f1e113]: Siem Reap, Cambodia
+    - generic [ref=f1e117]:
+      - text: Global reach
+      - heading "Sites across the world" [level=2] [ref=f1e118]
+      - paragraph [ref=f1e119]: From Petra to the Great Wall, the database covers heritage landmarks on every continent. The globe below marks where each one lives — click and drag to explore.
+    - generic [ref=f1e126]:
+      - generic [ref=f1e127]:
+        - text: Preservation
+        - heading "Building with care" [level=2] [ref=f1e128]
+        - paragraph [ref=f1e129]: The goal isn't just recognition — it's understanding why these places endure.
+      - generic [ref=f1e130]:
+        - generic [ref=f1e132]:
+          - generic [ref=f1e133]:
+            - text: "1"
+            - heading "Document" [level=3] [ref=f1e134]
+          - paragraph [ref=f1e135]: Every recognised site is linked to open academic and institutional sources.
+        - generic [ref=f1e137]:
+          - generic [ref=f1e138]:
+            - text: "2"
+            - heading "Preserve" [level=3] [ref=f1e139]
+          - paragraph [ref=f1e140]: We avoid geolocation noise that could expose fragile or unguarded sites to over-tourism.
+        - generic [ref=f1e142]:
+          - generic [ref=f1e143]:
+            - text: "3"
+            - heading "Share" [level=3] [ref=f1e144]
+          - paragraph [ref=f1e145]: The catalogue is growing; new sites are added through verified community contributions.
+        - generic [ref=f1e147]:
+          - generic [ref=f1e148]:
+            - text: "4"
+            - heading "Teach" [level=3] [ref=f1e149]
+          - paragraph [ref=f1e150]: Each entry includes context on craftsmanship, era, and cultural significance.
+      - generic [ref=f1e151]:
+        - generic [ref=f1e153]:
+          - paragraph [ref=f1e154]: "12"
+          - paragraph [ref=f1e155]: Countries represented
+        - generic [ref=f1e157]:
+          - paragraph [ref=f1e158]: 40+
+          - paragraph [ref=f1e159]: Heritage sites catalogued
+        - generic [ref=f1e161]:
+          - paragraph [ref=f1e162]: 98%
+          - paragraph [ref=f1e163]: Mean confidence on benchmark set
+  - contentinfo [ref=f1e164]:
+    - generic [ref=f1e166]:
+      - generic [ref=f1e167]: Heritage Discovery
+      - paragraph [ref=f1e172]: Recognise the stories of place.
+      - paragraph [ref=f1e174]: © 2026 Heritage Discovery. Built with care.

@@ -202,5 +202,32 @@ class TestRankCandidates(unittest.TestCase):
         self.assertEqual(len(results), 2)
 
 
+class TestInvalidImageHandling(unittest.TestCase):
+    """Verify invalid/corrupt images and empty retrieval are handled safely."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.valid_image = Path(self.temp_dir) / "valid.jpg"
+        Image.new('RGB', (100, 100), (255, 0, 0)).save(self.valid_image)
+        self.corrupt_image = Path(self.temp_dir) / "corrupt.jpg"
+        self.corrupt_image.write_text("not an image")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.temp_dir)
+
+    def test_extract_features_invalid_image_raises(self):
+        with self.assertRaises(ValueError):
+            extract_features(self.corrupt_image)
+
+    def test_rank_candidates_invalid_candidate_raises(self):
+        with self.assertRaises(ValueError):
+            rank_candidates(str(self.valid_image), [str(self.corrupt_image)])
+
+    def test_rank_candidates_empty_candidates(self):
+        results = rank_candidates(str(self.valid_image), [], top_k=5)
+        self.assertEqual(results, [])
+
+
 if __name__ == '__main__':
     unittest.main()

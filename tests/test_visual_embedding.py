@@ -52,9 +52,10 @@ def _mock_processor():
 def _mock_model():
     """Return a mock model that returns a 512-dim all-ones embedding."""
     model = MagicMock()
-    model.get_image_features.return_value = _mock_tensor(
-        np.ones((1, 512), dtype=np.float32)
-    )
+    # Return an object with pooler_output attribute (like BaseModelOutputWithPooling)
+    output_mock = MagicMock()
+    output_mock.pooler_output = _mock_tensor(np.ones((1, 512), dtype=np.float32))
+    model.get_image_features.return_value = output_mock
     # AutoModel.from_pretrained().to().eval() must round-trip back to this
     # mock so call counts are tracked on the configured object.
     model.from_pretrained.return_value = model

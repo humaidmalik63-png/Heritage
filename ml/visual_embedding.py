@@ -135,9 +135,16 @@ class VisualEmbeddingExtractor:
         _load_model(device=self._device)
         inputs = _state["processor"](images=pil_img, return_tensors="pt")
         with torch.no_grad():
-            feat = _state["model"].get_image_features(
+            outputs = _state["model"].get_image_features(
                 **inputs.to(_state["device"])
             )
+        # handle newer transformers returning BaseModelOutputWithPooling
+        if hasattr(outputs, "pooler_output"):
+            feat = outputs.pooler_output
+        elif hasattr(outputs, "last_hidden_state"):
+            feat = outputs.last_hidden_state[:, 0]
+        else:
+            feat = outputs
         emb = feat.squeeze(0).cpu().numpy()
 
         norm = np.linalg.norm(emb)

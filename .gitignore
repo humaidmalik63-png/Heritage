@@ -1,42 +1,13 @@
-# Dependencies
-node_modules/
+.venv/
+.venv312/
 __pycache__/
-*.pyc
+*.py[cod]
 .env
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Build artifacts
+.env.*
+!.env.example
+node_modules/
 .next/
 dist/
 build/
-
-# Data
-data/raw/*
-data/processed/*
-data/metadata/*
-data/evidence/*
-vector_store/*.index
-vector_store/*.npy
-
-# Logs
-*.log
-logs/
-
-# Environment
-.env.local
-.env.development
-.env.production
-
-# Docker
-docker-compose.override.yml
-
-# Aider local files
-.aider.*
+.vscode/
+.idea/

@@ -1,0 +1,3 @@
+[     338ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-DYKRQPZ6.js?v=0b4b5741:21608
+[     524ms] [ERROR] The script has an unsupported MIME type ('text/html'). @ :0
+[     741ms] [WARNING] Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly. @ http://localhost:5173/node_modules/.vite/deps/framer-motion.js?v=0b4b5741:695

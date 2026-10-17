@@ -1,0 +1,110 @@
+[
+  {
+    "site_id": "taj_mahal",
+    "claim": "The Taj Mahal is a white marble mausoleum commissioned in 1632 by Mughal Emperor Shah Jahan.",
+    "source_name": "UNESCO World Heritage List - Taj Mahal",
+    "source_url": "https://whc.unesco.org/en/list/252"
+  },
+  {
+    "site_id": "taj_mahal",
+    "claim": "The monument is located in Agra, Uttar Pradesh, India.",
+    "source_name": "Archaeological Survey of India - Monument List",
+    "source_url": "https://asi.nic.in/monuments"
+  },
+  {
+    "site_id": "red_fort",
+    "claim": "The Red Fort in Delhi was the primary residence of Mughal emperors from 1648 to 1857.",
+    "source_name": "UNESCO World Heritage List - Red Fort Complex",
+    "source_url": "https://whc.unesco.org/en/list/231"
+  },
+  {
+    "site_id": "red_fort",
+    "claim": "The fort hosts the annual Independence Day flag-hoisting ceremony of India.",
+    "source_name": "Government of India - Official Gazette",
+    "source_url": "https://india.gov.in"
+  },
+  {
+    "site_id": "qutub_minar",
+    "claim": "The Qutb Minar was begun in 1193 by Qutb-ud-din Aibak and completed by his successors, standing 72.5 metres tall in Delhi.",
+    "source_name": "UNESCO World Heritage List - Qutb Minar and its Monuments",
+    "source_url": "https://whc.unesco.org/en/list/233"
+  },
+  {
+    "site_id": "qutub_minar",
+    "claim": "The minar and its surrounding monuments form the first garden city complex in India, built by the Delhi Sultanate.",
+    "source_name": "Archaeological Survey of India - Qutb Minar",
+    "source_url": "https://asi.nic.in/monuments"
+  },
+  {
+    "site_id": "ajanta_caves",
+    "claim": "The Ajanta Caves comprise thirty rock-cut Buddhist monuments excavated into a horseshoe-shaped gorge on the Waghora River near Aurangabad, Maharashtra.",
+    "source_name": "UNESCO World Heritage List - Ajanta Caves",
+    "source_url": "https://whc.unesco.org/en/list/152"
+  },
+  {
+    "site_id": "ajanta_caves",
+    "claim": "The caves are noted for their surviving wall paintings and sculptures, spanning roughly the 2nd century BCE to the 6th century CE.",
+    "source_name": "Archaeological Survey of India - Ajanta Caves",
+    "source_url": "https://asi.nic.in/monuments"
+  },
+  {
+    "site_id": "konark_sun_temple",
+    "claim": "The Sun Temple at Konark was built in the 13th century by King Narasimhadeva I of the Eastern Ganga Dynasty.",
+    "source_name": "UNESCO World Heritage List - Sun Temple, Konark",
+    "source_url": "https://whc.unesco.org/en/list/246"
+  },
+  {
+    "site_id": "konark_sun_temple",
+    "claim": "The temple is designed in the form of a chariot of the sun god Surya with twelve pairs of carved wheels.",
+    "source_name": "Archaeological Survey of India - Konark Monuments",
+    "source_url": "https://asi.nic.in/monuments"
+  },
+  {
+    "site_id": "sun_temple_konark",
+    "claim": "The Sun Temple at Konark was built in the 13th century by King Narasimhadeva I of the Eastern Ganga Dynasty.",
+    "source_name": "UNESCO World Heritage List - Sun Temple, Konark",
+    "source_url": "https://whc.unesco.org/en/list/246"
+  },
+  {
+    "site_id": "sun_temple_konark",
+    "claim": "The temple is designed in the form of a chariot of the sun god Surya with twelve pairs of carved wheels.",
+    "source_name": "Archaeological Survey of India - Konark Monuments",
+    "source_url": "https://asi.nic.in/monuments"
+  },
+  {
+    "site_id": "khajuraho",
+    "claim": "The Khajuraho Group of Monuments comprises Hindu and Jain temples built between 950 and 1050 CE under the Chandela Dynasty.",
+    "source_name": "UNESCO World Heritage List - Khajuraho Group of Monuments",
+    "source_url": "https://whc.unesco.org/en/list/240"
+  },
+  {
+    "site_id": "khajuraho",
+    "claim": "The temples are noted for their Nagara-style architecture and elaborate sculptural decoration.",
+    "source_name": "Archaeological Survey of India - Khajuraho",
+    "source_url": "https://asi.nic.in/monuments"
+  },
+  {
+    "site_id": "elephanta_caves",
+    "claim": "The Elephanta Caves are rock-cut cave temples on Elephanta Island dedicated primarily to Shiva, dating from the 6th to 8th centuries.",
+    "source_name": "UNESCO World Heritage List - Elephanta Caves",
+    "source_url": "https://whc.unesco.org/en/list/244"
+  },
+  {
+    "site_id": "elephanta_caves",
+    "claim": "The site includes the celebrated Trimurti (three-headed Shiva) sculptural panel at the main shrine entrance.",
+    "source_name": "Archaeological Survey of India - Elephanta Caves",
+    "source_url": "https://asi.nic.in/monuments"
+  },
+  {
+    "site_id": "jama_masjid",
+    "claim": "Jama Masjid was commissioned by Mughal Emperor Shah Jahan and completed in 1656 CE.",
+    "source_name": "UNESCO World Heritage List - Red Fort Complex",
+    "source_url": "https://whc.unesco.org/en/list/231"
+  },
+  {
+    "site_id": "jama_masjid",
+    "claim": "The mosque's courtyard can accommodate over 25,000 worshippers, making it one of the largest mosques in India.",
+    "source_name": "Archaeological Survey of India - Monument List",
+    "source_url": "https://asi.nic.in/monuments"
+  }
+]

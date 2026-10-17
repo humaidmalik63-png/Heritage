@@ -1,0 +1,85 @@
+- generic [active] [ref=f4e1]:
+  - link "Skip to content" [ref=f4e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=f4e3]:
+    - banner:
+      - navigation "Primary" [ref=f4e4]:
+        - link "Heritage Discovery — home" [ref=f4e5] [cursor=pointer]:
+          - /url: /
+          - text: Heritage
+        - button "Open menu" [ref=f4e7] [cursor=pointer]
+    - main [ref=f4e12]:
+      - article [ref=f4e14]:
+        - generic [ref=f4e15]:
+          - navigation [ref=f4e20]:
+            - link "Back to heritage" [ref=f4e21] [cursor=pointer]:
+              - /url: /explore
+              - generic [aria-hidden] [ref=f4e22]: ←
+          - generic [ref=f4e24]:
+            - generic [ref=f4e25]: Mausoleum · Agra, South Asia, India
+            - heading "Taj Mahal" [level=1] [ref=f4e26]:
+              - generic [ref=f4e27]: Taj
+              - generic [ref=f4e29]: Mahal
+            - paragraph [ref=f4e31]: Agra, South Asia, India
+        - generic [ref=f4e32]:
+          - generic [ref=f4e33]:
+            - generic [ref=f4e34]:
+              - heading "Description" [level=2] [ref=f4e37]
+              - paragraph [ref=f4e39]: White marble mausoleum commissioned by Mughal Emperor Shah Jahan in memory of his wife Mumtaz Mahal.
+            - generic [ref=f4e40]:
+              - heading "History" [level=2] [ref=f4e43]
+              - paragraph [ref=f4e45]: 1632-1653 CE
+            - generic [ref=f4e46]:
+              - heading "Cultural Significance" [level=2] [ref=f4e49]
+              - paragraph [ref=f4e51]: Pinnacle of Mughal architecture; UNESCO World Heritage Site (1983); symbol of love recognized globally.
+            - generic [ref=f4e52]:
+              - heading "Architecture" [level=2] [ref=f4e55]
+              - paragraph [ref=f4e57]: Symmetrical charbagh garden, central onion dome flanked by four smaller domes, four minarets at corners, white marble Pietra Dura inlay work, reflective water channels.
+            - generic [ref=f4e58]:
+              - heading "Preservation" [level=2] [ref=f4e61]
+              - paragraph [ref=f4e63]: UNESCO World Heritage Site
+            - generic [ref=f4e64]:
+              - heading "Sources" [level=2] [ref=f4e67]
+              - generic [ref=f4e68]:
+                - paragraph [ref=f4e69]: Everything above is drawn from these records. Each one can be opened and checked.
+                - list [ref=f4e70]:
+                  - listitem [ref=f4e71]:
+                    - generic [ref=f4e72]: "01"
+                    - link "UNESCO World Heritage List - Taj Mahal whc.unesco.org" [ref=f4e73] [cursor=pointer]:
+                      - /url: https://whc.unesco.org/en/list/252
+                      - generic [ref=f4e74]: UNESCO World Heritage List - Taj Mahal
+                      - generic [ref=f4e75]:
+                        - text: whc.unesco.org
+                        - generic [aria-hidden] [ref=f4e76]: ↗
+          - generic [ref=f4e77]:
+            - link "Back to heritage" [ref=f4e78] [cursor=pointer]:
+              - /url: /explore
+            - link "Or identify one of your own" [ref=f4e81] [cursor=pointer]:
+              - /url: /recognize
+    - contentinfo [ref=f4e84]:
+      - generic [ref=f4e85]:
+        - generic [ref=f4e86]:
+          - generic [ref=f4e87]: Heritage
+          - generic [ref=f4e88]: Discovery
+          - paragraph [ref=f4e89]: Visual heritage recognition, and a way to meet the record behind a place with a photograph.
+        - navigation "Footer" [ref=f4e90]:
+          - generic [ref=f4e91]: Views
+          - list [ref=f4e92]:
+            - listitem [ref=f4e93]:
+              - link "Home" [ref=f4e94] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=f4e95]:
+              - link "Recognize" [ref=f4e96] [cursor=pointer]:
+                - /url: /recognize
+            - listitem [ref=f4e97]:
+              - link "Explore" [ref=f4e98] [cursor=pointer]:
+                - /url: /explore
+            - listitem [ref=f4e99]:
+              - link "About" [ref=f4e100] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=f4e101]:
+              - link "Identify" [ref=f4e102] [cursor=pointer]:
+                - /url: /recognize
+      - generic [ref=f4e103]:
+        - generic [ref=f4e104]: © 2026 Heritage Discovery
+        - generic [ref=f4e105]: Every answer carries its source.

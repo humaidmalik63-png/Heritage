@@ -1,0 +1,1 @@
+Write a one-line Python function that returns the string "Hello, world!".

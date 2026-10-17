@@ -1,0 +1,110 @@
+[
+  {
+    "id": "taj_mahal",
+    "name": "Taj Mahal",
+    "alternate_name": "Tāj Mahal",
+    "location": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India",
+    "description": "A white marble mausoleum commissioned in 1632 by Emperor Shah Jahan in memory of his wife Mumtaz Mahal, recognised as one of the finest examples of Mughal architecture.",
+    "historical_period": "Mughal Empire (17th century)",
+    "category": "monument",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "red_fort",
+    "name": "Red Fort",
+    "alternate_name": "Lal Qila",
+    "location": "Delhi",
+    "state": "Delhi",
+    "country": "India",
+    "description": "The historic fort complex in Old Delhi that served as the primary residence of the Mughal emperors for nearly 200 years and the site of India's annual Independence Day flag-hoisting ceremony.",
+    "historical_period": "Mughal Empire (17th century)",
+    "category": "fort",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "qutub_minar",
+    "name": "Qutb Minar",
+    "alternate_name": "Qutub Minar",
+    "location": "Delhi",
+    "state": "Delhi",
+    "country": "India",
+    "description": "A 72.5 metre red sandstone minaret built in 1193 by Qutb-ud-din Aibak, marking the commencement of the Delhi Sultanate and the first garden city complex in India.",
+    "historical_period": "Delhi Sultanate (12th-13th century)",
+    "category": "minaret",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "ajanta_caves",
+    "name": "Ajanta Caves",
+    "alternate_name": "Ajanta Buddhist Caves",
+    "location": "Aurangabad",
+    "state": "Maharashtra",
+    "country": "India",
+    "description": "Thirty rock-cut Buddhist cave monuments cut into a horseshoe-shaped gorge on the Waghora River, renowned for their wall paintings and sculptures spanning roughly two centuries of Buddhist art.",
+    "historical_period": "2nd century BCE to 6th century CE",
+    "category": "cave",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "konark_sun_temple",
+    "name": "Sun Temple, Konark",
+    "alternate_name": "Konark Surya Mandir",
+    "location": "Konark",
+    "state": "Odisha",
+    "country": "India",
+    "description": "A 13th-century chariot-shaped temple dedicated to the sun god Surya, renowned for its monumental stone-carved wheels and intricate narrative reliefs.",
+    "historical_period": "Eastern Ganga Dynasty (13th century)",
+    "category": "temple",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "sun_temple_konark",
+    "name": "Sun Temple, Konark",
+    "alternate_name": "Konark Surya Mandir",
+    "location": "Konark",
+    "state": "Odisha",
+    "country": "India",
+    "description": "A 13th-century chariot-shaped temple dedicated to the sun god Surya, renowned for its monumental stone-carved wheels and intricate narrative reliefs.",
+    "historical_period": "Eastern Ganga Dynasty (13th century)",
+    "category": "temple",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "khajuraho",
+    "name": "Khajuraho Group of Monuments",
+    "alternate_name": "Khajuraho Temples",
+    "location": "Khajuraho",
+    "state": "Madhya Pradesh",
+    "country": "India",
+    "description": "A group of Hindu and Jain temples built between 950 and 1050 CE, celebrated for their elaborate Nagara-style architecture and richly carved sculptures depicting celestial and earthly life.",
+    "historical_period": "Chandela Dynasty (10th-11th century)",
+    "category": "temple",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "elephanta_caves",
+    "name": "Elephanta Caves",
+    "alternate_name": "Gharapuri Caves",
+    "location": "Elephanta Island",
+    "state": "Maharashtra",
+    "country": "India",
+    "description": "A network of rock-cut cave temples on an island in Mumbai Harbour, primarily dedicated to Shiva and dating from the 6th to 8th centuries, featuring monumental sculptural panels including the famous Trimurti.",
+    "historical_period": "Gupta / Kalachuri period (6th-8th century)",
+    "category": "cave",
+    "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
+  },
+  {
+    "id": "jama_masjid",
+    "name": "Jama Masjid",
+    "alternate_name": "Masjid-i Jahan-Numa",
+    "location": "Delhi",
+    "state": "Delhi",
+    "country": "India",
+    "description": "One of the largest mosques in India, built by Mughal Emperor Shah Jahan between 1650 and 1656. The mosque's courtyard can accommodate over 25,000 people.",
+    "historical_period": "Mughal Empire (17th century)",
+    "category": "mosque",
+    "preservation_context": "UNESCO World Heritage Site (part of Red Fort Complex); ASI-protected monument"
+  }
+]
