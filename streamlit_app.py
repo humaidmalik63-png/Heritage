@@ -348,3 +348,4 @@ with tab_catalogue:
             st.error(f"Error loading catalogue: {e}")
     else:
         st.warning("Catalogue data file not found.")
+

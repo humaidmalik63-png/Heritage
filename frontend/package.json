@@ -2,9 +2,11 @@
   "name": "heritage-discovery-frontend-new",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "Heritage Discovery frontend — static HTML/CSS/vanilla JS served by Vite in dev.",
   "scripts": {
-    "dev": "vite --port 8080 --strictPort"
+    "dev": "vite --port 8080 --strictPort",
+    "build": "vite build"
   },
   "devDependencies": {
     "vite": "^7.1.0"
