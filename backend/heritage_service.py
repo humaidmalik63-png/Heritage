@@ -311,7 +311,7 @@ class HeritageService:
         result = self.recognize(query, question=question, top_k=top_k)
 
         # 1. Local match accepted: return the local result directly
-        if result.confident:
+        if result.confident and result.confirmed:
             return result
 
         # 2. Local match rejected: call Ollama vision fallback if image is available
@@ -319,52 +319,53 @@ class HeritageService:
             try:
                 ollama_res = await self.ollama_client.identify_monument(query)
                 # Only accept the global identification when Ollama reports a
-                # GENUINE heritage monument.  A non-heritage landmark (e.g.
-                # Times Square, Eiffel Tower, a modern skyscraper, a public
-                # square) must never be presented as a confirmed heritage site.
-                if ollama_res.identified and ollama_res.is_heritage:
-                    # Rule 5: If Ollama identifies a heritage monument
-                    result.confirmed = True
+                # GENUINE heritage monument and not unknown.
+                if not ollama_res.unknown and ollama_res.identified and ollama_res.is_heritage:
+                    # Model found a plausible identification:
+                    # Mark source as "ollama", keep separate from local FAISS matches,
+                    # and do NOT mark as independently confirmed.
                     result.confident = True
+                    result.confirmed = False  # Requirement 7: do not mark as independently confirmed
                     result.decision = "match"
                     result.recognition_source = "ollama"
-                    result.site_id = "unknown"  # Rule 8: NEVER turn Ollama response into local site_id
-                    # ``similarity`` deliberately keeps the local CLIP cosine
-                    # that ``recognize()`` already recorded -- the rejected
-                    # nearest-neighbour score.  The vision model's own
-                    # confidence goes to ``confidence`` (and to
-                    # global_identification.confidence) so the two scales are
-                    # never reported as the same number.
-                    result.confidence = round(float(ollama_res.confidence), 6)
+                    result.site_id = "unknown"  # NEVER turn Ollama response into local site_id
+                    result.confidence = ollama_res.confidence  # Model-estimated confidence
+                    # result.similarity remains the local CLIP cosine score!
                     result.global_identification = ollama_res.to_dict()
-                    result.reason = ollama_res.reason
-                    # The global vision model is itself the source of this
-                    # identification.  It is NOT an external historical source,
-                    # so no verified URL is claimed; the label makes that
-                    # explicit in the SOURCES section.
-                    result.citations = [
-                        {"source_name": "Global vision identification", "source_url": ""}
-                    ]
+                    result.reason = ollama_res.visual_evidence or ollama_res.reason
+
+                    # Requirement 9: Keep factual historical questions subject to evidence-grounding.
+                    # Visual identification is not historical evidence; do not fabricate citations.
+                    result.citations = []
+                    result.answer = None
+                    result.is_grounded = False
+                    result.metadata = {}
+                    result.evidence = {
+                        "claims": [],
+                        "source_names": [],
+                        "source_urls": [],
+                        "relevant_claims": [],
+                    }
                 else:
-                    # Rule 6: If Ollama cannot identify the image, or the
-                    # identified place is not a heritage monument, return a
-                    # safe unknown result instead of presenting the landmark
-                    # as a confirmed heritage site.
+                    # Requirement 8: If Ollama cannot identify the image, or
+                    # identified place is non-heritage, return safe unknown result.
                     result.confirmed = False
                     result.confident = False
                     result.site_id = "unknown"
                     result.decision = "unknown"
                     result.recognition_source = "unknown"
                     result.global_identification = None
-                    # Distinguish a non-heritage rejection from a generic
-                    # low-similarity rejection so callers can tell why.
+                    result.confidence = None
+                    result.citations = []
+                    result.answer = None
+                    result.is_grounded = False
                     result.reason = (
                         REASON_NON_HERITAGE
                         if ollama_res.explicit_non_heritage
                         else REASON_LOW_SIMILARITY
                     )
             except Exception as exc:
-                # Rule 7: Failure, timeout, malformed data, or missing credentials
+                # Requirement 8: Failure, timeout, malformed data, or missing credentials
                 logger.warning("Ollama vision fallback failed: %s", type(exc).__name__)
                 result.confirmed = False
                 result.confident = False
@@ -372,6 +373,10 @@ class HeritageService:
                 result.decision = "unknown"
                 result.recognition_source = "unknown"
                 result.global_identification = None
+                result.confidence = None
+                result.citations = []
+                result.answer = None
+                result.is_grounded = False
                 result.reason = REASON_LOW_SIMILARITY
 
         return result
@@ -380,9 +385,9 @@ class HeritageService:
 def build_service(
     index_path: Union[str, Path] = "data/processed/index/clip_index.faiss",
     mapping_path: Union[str, Path] = "data/processed/index/mapping.json",
-    metadata_path: Union[str, Path] = "data/metadata/heritage_metadata.json",
+    metadata_path: Union[str, Path] = "data/evidence/heritage_metadata.json",
     evidence_path: Union[str, Path] = "data/evidence/heritage_evidence.json",
-    threshold: float = 0.65,
+    threshold: float = 0.85,
     top_k: int = DEFAULT_TOP_K,
     provider: Optional[Provider] = None,
     extractor: Optional[VisualEmbeddingExtractor] = None,

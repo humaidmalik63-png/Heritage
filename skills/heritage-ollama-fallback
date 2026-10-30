@@ -1,0 +1,37 @@
+"use when identifying a heritage monument via Ollama vision fallback and needing to distinguish a model proposal from an independently verified catalogue match.
+
+one-line behavior: never mark a result confirmed solely because Ollama returns identified=true or confidence=1 — the identification is the model's proposal, not an independently verified catalogue match"
+
+procedure: use when ollama fallback is invoked in heritage recognition:
+  1. local open-set recognition has rejected the match (similarity below threshold or margin insufficient)
+  2. invoke ollama_client.identify_monument(query) with the query image
+  3. parse the OllamaVisionResult from the response
+  4. if ollama_res.identified and ollama_res.is_heritage:
+       - set result.confident = True  (the model was confident in its call)
+       - set result.decision = "match"
+       - set result.recognition_source = "ollama"
+       - set result.site_id = "unknown"  (Rule 8: never turn Ollama response into local site_id)
+       - set result.global_identification = ollama_res.to_dict()
+       - set result.reason = ollama_res.reason
+       - do NOT set result.confirmed = True  (the identification is the model's proposal, NOT independently verified against the catalogue)
+       - set result.is_grounded = False  (no question asked, no independent grounding)
+       - set result.confidence = None  (keep CLIP similarity separate from model confidence)
+  5. else (ollama_res.identified is False or not ollama_res.is_heritage):
+       - set result.confirmed = False
+       - set result.confident = False
+       - set result.site_id = "unknown"
+       - set result.decision = "unknown"
+       - set result.recognition_source = "unknown"
+       - set result.global_identification = None
+       - set result.reason = REASON_NON_HERITAGE if ollama_res.explicit_non_heritage else REASON_LOW_SIMILARITY
+  6. return result
+
+pitfall: marking a result confirmed=True just because ollama_res.identified=True or ollama_res.confidence=1. the identification is the model's proposal; it is not independently verified against the catalogue. the confirmed flag must reflect catalogue-level verification, not model confidence alone.
+
+reference-ollama: when the Ollama vision model is used as a global fallback for heritage identification, the result carries the model's assessment in global_identification but the confirmed flag reflects catalogue-level verification status, not model confidence.
+
+reference-ollama-fallback-rules: 
+  - Rule 5: If Ollama identifies a heritage monument, the model's confidence goes to result.confidence; the CLIP similarity remains in result.similarity so the two scales are never reported as the same number.
+  - Rule 6: If Ollama cannot identify the image, or the identified place is not a heritage monument, return a safe unknown result instead of presenting the landmark as a confirmed heritage site.
+  - Rule 7: Failure, timeout, malformed data, or missing credentials — return a safe unknown result.
+  - Rule 8: NEVER turn Ollama response into a local site_id automatically.

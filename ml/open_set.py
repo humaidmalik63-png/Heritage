@@ -179,7 +179,7 @@ class OpenSetRejection:
                 confirmed=False,
                 site_id=None,
                 similarity=None,
-                reason=f"best_score_below_threshold ({top_site.best_score:.3f} < {self.accept_threshold})",
+                reason=f"best_score_below_threshold ({top_site.best_score:.6f} < {self.accept_threshold})",
                 site_scores=site_scores,
             )
 
@@ -205,7 +205,7 @@ class OpenSetRejection:
                 confirmed=False,
                 site_id=None,
                 similarity=None,
-                reason=f"margin_too_small ({margin:.3f} < {self.margin_threshold})",
+                reason=f"margin_too_small ({margin:.6f} < {self.margin_threshold})",
                 site_scores=site_scores,
             )
 

@@ -107,6 +107,20 @@ class ConfidenceLayer:
         self.config.similarity_threshold = threshold
 
 
+# Canonical site ID aliases: shortened/alternative IDs → canonical IDs.
+# Must match the aliases in data/evidence/loader.py to ensure consistent
+# site_id normalization across the pipeline.
+SITE_ID_ALIASES: dict[str, str] = {
+    "red_fort": "red_fort_delhi",
+    "jama_masjid": "jama_masjid_delhi",
+}
+
+
+def _normalize_site_ids(site_ids: list[str], aliases: dict[str, str] = SITE_ID_ALIASES) -> list[str]:
+    """Normalize a list of site_ids to canonical form using aliases."""
+    return [aliases.get(sid, sid) for sid in site_ids]
+
+
 def build_confidence_layer(
     index_path: str,
     mapping_path: str,
@@ -129,13 +143,17 @@ def build_confidence_layer(
     with open(mapping_path) as f:
         mapping = json.load(f)
 
+    # Normalize site_ids to canonical form (matching evidence/catalogue)
+    raw_site_ids = mapping.get("site_ids", [])
+    canonical_site_ids = _normalize_site_ids(raw_site_ids)
+
     config = RetrievalConfig(similarity_threshold=threshold, top_k=top_k)
     return ConfidenceLayer(
         index,
         mapping["image_ids"],
         mapping["paths"],
         config,
-        site_ids=mapping.get("site_ids"),
+        site_ids=canonical_site_ids,
     )
 
 

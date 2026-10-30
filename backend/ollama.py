@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import httpx
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +55,16 @@ OLLAMA_VISION_PROMPT = """Analyze this image and determine whether it depicts a 
 
 You must respond with valid JSON strictly matching this schema:
 {
-  "identified": boolean,
+  "unknown": boolean,
   "site_name": string or null,
+  "country_or_region": string or null,
   "city": string or null,
   "country": string or null,
+  "visual_evidence": string,
   "confidence": number between 0.0 and 1.0,
-  "reason": string,
-  "uncertain": boolean,
+  "uncertainty": string or null,
+  "alternatives": [string, ...],
+  "limitations": string or null,
   "is_heritage": boolean,
   "historical_period": string or null,
   "founder_built_by": string or null,
@@ -71,21 +74,24 @@ You must respond with valid JSON strictly matching this schema:
 }
 
 Rules:
-1. Only set "identified": true when the image depicts a GENUINE heritage monument or site (historic monument, ancient temple, fort, palace, archaeological site, UNESCO site, sacred site, or historic religious building):
-   - "identified": true
+1. Only set "unknown": false when the image depicts a GENUINE heritage monument or site (historic monument, ancient temple, fort, palace, archaeological site, UNESCO site, sacred site, or historic religious building):
+   - "unknown": false
    - "is_heritage": true
-   - "site_name": the exact common name of the monument (e.g. "Hawa Mahal", "Colosseum", "Angkor Wat")
-   - "city": city or region where it is located
-   - "country": country where it is located
-   - "confidence": confidence score (e.g. 0.85)
-   - "reason": 1-2 sentences on the key visual features identifying it
-   - "uncertain": false
+   - "site_name": the exact common name of the monument (e.g. "Hawa Mahal", "Colosseum", "Angkor Wat", "Abu Simbel Temples")
+   - "country_or_region": country or region where it is located (e.g. "Egypt", "Rajasthan, India")
+   - "city": city or region where it is located (or null)
+   - "country": country where it is located (or null)
+   - "visual_evidence": 1-3 sentences describing the key visible architectural details, carvings, materials, or distinctive structures identifying it
+   - "confidence": estimated confidence score between 0.0 and 1.0 (treated as an estimate, not a certainty)
+   - "uncertainty": null if certain, or a brief note explaining any uncertainty
+   - "alternatives": list of other plausible candidate sites if not 100% certain, or []
+   - "limitations": any limitations of the visual analysis (e.g. "Partial view", "Low resolution", "Obscured by crowd/trees") or null
    - "historical_period": approximate construction period or dynasty (e.g. "Mughal Empire (17th century)"). Omit if unreliable.
    - "founder_built_by": the ruler, patron, or culture that built it (e.g. "Shah Jahan", "Eastern Ganga Dynasty"). Omit if unreliable.
    - "architectural_style": the recognized architectural tradition (e.g. "Mughal architecture", "Nagara-style temple"). Omit if unreliable.
    - "significance": 1-2 sentences on why the site matters historically, culturally, or architecturally.
    - "interesting_facts": 3–5 short factual highlights about the monument. Keep them verifiable; do NOT invent claims.
-2. If the image depicts a NON-HERITAGE landmark, place, or ordinary scene, set "identified": false and "is_heritage": false. This includes, but is not limited to:
+2. If the image depicts a NON-HERITAGE landmark, place, or ordinary scene, set "unknown": true and "is_heritage": false. This includes, but is not limited to:
    - modern commercial buildings, skyscrapers, office towers, shopping malls
    - public squares, plazas, streetscapes, bridges, train stations, airports
    - statues, fountains, obelisks, memorials that are not heritage monuments
@@ -93,14 +99,18 @@ Rules:
    - natural scenery: beaches, mountains, forests, parks, lakes, waterfalls
    - ordinary cityscapes, roads, vehicles, boats, airplanes, interiors, people
    - any famous place that is primarily a modern commercial, transport, or recreational landmark rather than a historic heritage site
-   - "site_name": null, "city": null, "country": null, "confidence": 0.0, "uncertain": true
-   - "reason": briefly describe what was observed and why it is NOT a heritage site
+   - "site_name": null, "country_or_region": null, "city": null, "country": null, "confidence": 0.0
+   - "visual_evidence": briefly describe what was observed and why it is NOT a heritage site
+   - "alternatives": []
+   - "limitations": null
    - Leave all other profile fields null/empty.
 3. If you cannot identify the structure or place at all (unknown building, blurry image, unrelated scene):
-   - "identified": false, "is_heritage": false, "site_name": null, "city": null, "country": null, "confidence": 0.0, "uncertain": true
-   - "reason": brief explanation why it could not be identified
+   - "unknown": true, "is_heritage": false, "site_name": null, "country_or_region": null, "city": null, "country": null, "confidence": 0.0
+   - "visual_evidence": brief explanation why it could not be identified
+   - "alternatives": []
+   - "limitations": describe visual limitations that hindered recognition
    - Leave all other profile fields null/empty.
-4. NEVER set "identified": true for a non-heritage landmark. A non-heritage landmark is NOT a confirmed heritage site, even if it is famous.
+4. NEVER set "unknown": false for a non-heritage landmark. A non-heritage landmark is NOT a confirmed heritage site, even if it is famous.
 5. Do NOT guess or fabricate a monument name, dates, or historical claims. When you cannot verify a field, return it as null (not an empty string, not a guess).
 6. For "interesting_facts", include only well-established facts that are traceable to public heritage documentation (UNESCO, national archaeological surveys, academic sources). If you are unsure about a fact, omit it.
 7. Output raw JSON only. Do not include markdown code blocks or extra text."""
@@ -109,13 +119,21 @@ Rules:
 class OllamaVisionResult(BaseModel):
     """Structured response from Ollama vision identification."""
 
+    unknown: bool = Field(
+        default=True,
+        description="True if unknown or unidentified, False ONLY if confidently identified.",
+    )
     identified: bool = Field(
-        ...,
+        default=False,
         description="Whether the monument was confidently identified.",
     )
     site_name: Optional[str] = Field(
         default=None,
         description="Name of the monument or None.",
+    )
+    country_or_region: Optional[str] = Field(
+        default=None,
+        description="Country or region where monument is located or None.",
     )
     city: Optional[str] = Field(
         default=None,
@@ -125,9 +143,25 @@ class OllamaVisionResult(BaseModel):
         default=None,
         description="Country where monument is located or None.",
     )
+    visual_evidence: str = Field(
+        default="",
+        description="Visual features and evidence observed in the image.",
+    )
     confidence: float = Field(
         default=0.0,
-        description="Confidence score between 0.0 and 1.0.",
+        description="Confidence score between 0.0 and 1.0 (estimated, not calibrated).",
+    )
+    uncertainty: Optional[str] = Field(
+        default=None,
+        description="Uncertainty description or explanation.",
+    )
+    alternatives: list[str] = Field(
+        default_factory=list,
+        description="Alternative candidate sites or possibilities.",
+    )
+    limitations: Optional[str] = Field(
+        default=None,
+        description="Limitations of the visual analysis.",
     )
     reason: str = Field(
         default="",
@@ -177,16 +211,80 @@ class OllamaVisionResult(BaseModel):
         description="3-5 well-established factual highlights traceable to public sources.",
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _reconcile_fields(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+
+        # 1. unknown vs identified vs uncertain
+        if "unknown" in d and d["unknown"] is not None:
+            is_unk = bool(d["unknown"])
+            d["unknown"] = is_unk
+            if "identified" not in d or d["identified"] is None:
+                d["identified"] = not is_unk
+            if "uncertain" not in d or d["uncertain"] is None:
+                d["uncertain"] = is_unk
+        elif "identified" in d and d["identified"] is not None:
+            is_id = bool(d["identified"])
+            d["identified"] = is_id
+            if "unknown" not in d or d["unknown"] is None:
+                d["unknown"] = not is_id
+            if "uncertain" not in d or d["uncertain"] is None:
+                d["uncertain"] = not is_id
+        elif "uncertain" in d and d["uncertain"] is not None:
+            is_unc = bool(d["uncertain"])
+            d["uncertain"] = is_unc
+            d.setdefault("unknown", is_unc)
+            d.setdefault("identified", not is_unc)
+
+        # 2. visual_evidence vs reason
+        ve = d.get("visual_evidence")
+        r = d.get("reason")
+        if ve and not r:
+            d["reason"] = str(ve)
+        elif r and not ve:
+            d["visual_evidence"] = str(r)
+
+        # 3. country_or_region vs country / city
+        cor = d.get("country_or_region")
+        c = d.get("country")
+        ct = d.get("city")
+        if not cor:
+            if ct and c:
+                d["country_or_region"] = f"{ct}, {c}"
+            else:
+                d["country_or_region"] = c or ct
+        elif not c and cor:
+            if "," in cor:
+                part1, _, part2 = cor.rpartition(",")
+                d["city"] = d.get("city") or part1.strip()
+                d["country"] = part2.strip()
+            else:
+                d["country"] = cor.strip()
+
+        # 4. alternatives
+        alts = d.get("alternatives")
+        if alts is None:
+            d["alternatives"] = []
+        elif isinstance(alts, str):
+            d["alternatives"] = [alts] if alts.strip() else []
+        elif not isinstance(alts, list):
+            d["alternatives"] = []
+
+        # 5. limitations
+        lim = d.get("limitations")
+        if isinstance(lim, list):
+            d["limitations"] = "; ".join(str(x) for x in lim if x)
+        elif lim is not None and not isinstance(lim, str):
+            d["limitations"] = str(lim)
+
+        return d
+
     @field_validator("interesting_facts", mode="before")
     @classmethod
     def _null_facts_to_empty(cls, v: Any) -> Any:
-        """Accept ``null`` for ``interesting_facts`` and normalise it to ``[]``.
-
-        The vision model emits ``null`` whenever it has no facts to offer.  The
-        field is declared ``list[str]``, so that single null previously failed
-        ``model_validate`` and discarded the *entire* identification.  Existing
-        lists pass through untouched; every other field is unaffected.
-        """
         return [] if v is None else v
 
     @field_validator("confidence", mode="before")
@@ -201,11 +299,17 @@ class OllamaVisionResult(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Return the dictionary representation matching the project contract."""
         return {
+            "unknown": self.unknown,
             "identified": self.identified,
             "site_name": self.site_name,
+            "country_or_region": self.country_or_region,
             "city": self.city,
             "country": self.country,
+            "visual_evidence": self.visual_evidence,
             "confidence": self.confidence,
+            "uncertainty": self.uncertainty,
+            "alternatives": list(self.alternatives),
+            "limitations": self.limitations,
             "reason": self.reason,
             "uncertain": self.uncertain,
             "is_heritage": self.is_heritage,
@@ -221,11 +325,17 @@ class OllamaVisionResult(BaseModel):
 def fallback_unknown_result(reason: str = "Uncertain or unverified") -> OllamaVisionResult:
     """Construct a safe unknown / unverified result."""
     return OllamaVisionResult(
+        unknown=True,
         identified=False,
         site_name=None,
+        country_or_region=None,
         city=None,
         country=None,
+        visual_evidence=reason,
         confidence=0.0,
+        uncertainty="Unknown or unverified",
+        alternatives=[],
+        limitations=None,
         reason=reason,
         uncertain=True,
         is_heritage=False,
@@ -247,15 +357,29 @@ def encode_image_to_base64(image: Union[bytes, str, Path]) -> str:
     if isinstance(image, bytes):
         return base64.b64encode(image).decode("utf-8")
 
-    if isinstance(image, Path) or (isinstance(image, str) and os.path.isfile(image)):
+    if isinstance(image, Path):
+        if not image.is_file():
+            raise FileNotFoundError(f"Image file not found: {image}")
         with open(image, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
 
     if isinstance(image, str):
+        if os.path.isfile(image):
+            with open(image, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+
         # Handle data URL if present
         if image.startswith("data:"):
             _, _, b64_part = image.partition(",")
             return b64_part.strip()
+
+        # If it looks like a file path but does not exist, do not misinterpret as base64
+        looks_like_path = "/" in image or "\\" in image or any(
+            image.lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp")
+        )
+        if looks_like_path:
+            raise FileNotFoundError(f"Image file not found: {image}")
+
         return image.strip()
 
     raise TypeError(f"Unsupported image input type: {type(image).__name__}")
@@ -360,14 +484,20 @@ class OllamaVisionClient:
             return fallback_unknown_result(reason="Malformed JSON response from Ollama")
 
         # Normalize unknown states
-        if not result.identified:
+        if result.unknown or not result.identified:
             return OllamaVisionResult(
+                unknown=True,
                 identified=False,
                 site_name=None,
+                country_or_region=None,
                 city=None,
                 country=None,
+                visual_evidence=result.visual_evidence or result.reason or "Monument not identified",
                 confidence=0.0,
-                reason=result.reason or "Monument not identified",
+                uncertainty=result.uncertainty or "High uncertainty / unidentified",
+                alternatives=list(result.alternatives),
+                limitations=result.limitations,
+                reason=result.reason or result.visual_evidence or "Monument not identified",
                 uncertain=True,
                 is_heritage=False,
             )
@@ -379,12 +509,18 @@ class OllamaVisionClient:
         # instead of surfacing it as a confirmed recognition.
         if not result.is_heritage:
             return OllamaVisionResult(
+                unknown=True,
                 identified=False,
                 site_name=None,
+                country_or_region=None,
                 city=None,
                 country=None,
+                visual_evidence=result.visual_evidence or result.reason or REASON_NON_HERITAGE,
                 confidence=0.0,
-                reason=result.reason or REASON_NON_HERITAGE,
+                uncertainty="Non-heritage structure",
+                alternatives=list(result.alternatives),
+                limitations=result.limitations,
+                reason=result.reason or result.visual_evidence or REASON_NON_HERITAGE,
                 uncertain=True,
                 is_heritage=False,
                 explicit_non_heritage=True,
@@ -393,12 +529,18 @@ class OllamaVisionClient:
         # Normalize confirmed heritage states — carry over the optional profile
         # fields so the frontend can render a full heritage profile.
         return OllamaVisionResult(
+            unknown=False,
             identified=True,
             site_name=result.site_name,
+            country_or_region=result.country_or_region,
             city=result.city,
             country=result.country,
+            visual_evidence=result.visual_evidence or result.reason,
             confidence=result.confidence,
-            reason=result.reason,
+            uncertainty=result.uncertainty,
+            alternatives=list(result.alternatives),
+            limitations=result.limitations,
+            reason=result.reason or result.visual_evidence,
             uncertain=False,
             is_heritage=True,
             historical_period=result.historical_period or None,

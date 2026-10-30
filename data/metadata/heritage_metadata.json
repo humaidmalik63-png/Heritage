@@ -2,7 +2,7 @@
   {
     "id": "taj_mahal",
     "name": "Taj Mahal",
-    "alternate_name": "Tāj Mahal",
+    "alternate_name": "T\u0101j Mahal",
     "location": "Agra",
     "state": "Uttar Pradesh",
     "country": "India",
@@ -12,8 +12,8 @@
     "preservation_context": "UNESCO World Heritage Site; ASI-protected monument"
   },
   {
-    "id": "red_fort",
-    "name": "Red Fort",
+    "id": "red_fort_delhi",
+    "name": "Red Fort Complex (Lal Qila)",
     "alternate_name": "Lal Qila",
     "location": "Delhi",
     "state": "Delhi",

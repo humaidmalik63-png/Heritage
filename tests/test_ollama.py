@@ -484,11 +484,17 @@ class TestOllamaVisionClient:
         )
         d = res.to_dict()
         assert d == {
+            "unknown": False,
             "identified": True,
             "site_name": "Taj Mahal",
+            "country_or_region": "Agra, India",
             "city": "Agra",
             "country": "India",
+            "visual_evidence": "White marble dome",
             "confidence": 0.95,
+            "uncertainty": None,
+            "alternatives": [],
+            "limitations": None,
             "reason": "White marble dome",
             "uncertain": False,
             "is_heritage": True,
@@ -499,6 +505,39 @@ class TestOllamaVisionClient:
             "significance": "A mausoleum built entirely for memory.",
             "interesting_facts": ["Built in 1632", "Made of white marble"],
         }
+
+    @pytest.mark.anyio
+    async def test_structured_output_with_all_required_fields(self):
+        """Test parsing of structured output containing all 7 required fields."""
+        payload = {
+            "unknown": False,
+            "site_name": "Angkor Wat",
+            "country_or_region": "Siem Reap, Cambodia",
+            "visual_evidence": "Five lotus-bud towers surrounded by expansive moat and sandstone galleried enclosures",
+            "confidence": 0.94,
+            "alternatives": ["Bayon Temple"],
+            "limitations": "Slight morning fog in the background",
+            "is_heritage": True,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                status_code=200,
+                json={"message": {"role": "assistant", "content": json.dumps(payload)}},
+            )
+
+        client = _make_client(handler)
+        result = await client.identify_monument(SAMPLE_IMAGE_BYTES)
+
+        assert result.unknown is False
+        assert result.identified is True
+        assert result.site_name == "Angkor Wat"
+        assert result.country_or_region == "Siem Reap, Cambodia"
+        assert "lotus-bud" in result.visual_evidence
+        assert result.confidence == 0.94
+        assert result.alternatives == ["Bayon Temple"]
+        assert "fog" in result.limitations
+        assert result.is_heritage is True
 
     @pytest.mark.anyio
     async def test_heritage_profile_is_preserved(self):

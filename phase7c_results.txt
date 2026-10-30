@@ -1,0 +1,36 @@
+============================================================
+PHASE 7C — CONTROLLED CANDIDATE INTEGRATION TESTS
+============================================================
+
+Candidate FAISS: 28 vectors, 512 dim
+Candidate mapping: 28 entries
+
+Production FAISS: 16 vectors, 512 dim
+Production mapping: 16 entries
+
+1. Supported monument with metadata and evidence (taj_mahal)
+------------------------------------------------------------
+  is_known: True
+  claims: 3
+  source_urls: 3
+  first_url: https://whc.unesco.org/en/list/252
+
+2. Red Fort using canonical ID red_fort_delhi
+------------------------------------------------------------
+  is_known: True
+  claims: 3
+  source_urls: 3
+
+3. Jama Masjid using canonical ID jama_masjid_delhi
+------------------------------------------------------------
+  is_known: True
+  claims: 3
+  source_urls: 3
+
+4. Abu Simbel (previously reported missing metadata)
+------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\humai\AI\phase7c_test.py", line 148, in <module>
+    'answer_outcome': 'supported' if r4.is_known and r4.claims else 'unsupported' if not r4.is_known and r4.reason else 'unavailable',
+                                                                                                         ^^^^^^^^^
+AttributeError: 'GroundedContext' object has no attribute 'reason'

@@ -200,6 +200,9 @@ def validate_answer(
     # as a decline *and* the generator did not flag it as ungrounded.
     if is_grounded_flag is False or _is_abstention(answer_text):
         declines = _is_abstention(answer_text) and decline_reason != "ungrounded_answer"
+        # Also accept a None answer as a valid decline when evidence exists
+        if answer_text == "" and context.is_known:
+            declines = True
 
         if not isinstance(context, GroundedContext) or not context.is_known:
             if declines:

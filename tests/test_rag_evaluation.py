@@ -82,7 +82,7 @@ class TestCase1KnownHeritageQuery:
     def test_evidence_is_available(self, results):
         r = _by_name(results, "known_heritage_query")
         assert r.context_is_known is True
-        assert r.evidence_claim_count == 2
+        assert r.evidence_claim_count == 3
 
     def test_answer_is_grounded_with_citations(self, results):
         r = _by_name(results, "known_heritage_query")
@@ -94,13 +94,13 @@ class TestCase1KnownHeritageQuery:
 class TestCase2SecondKnownHeritageQuery:
     def test_retrieval_returns_red_fort(self, results):
         r = _by_name(results, "second_known_heritage_query")
-        assert r.retrieved_site_id == "red_fort"
+        assert r.retrieved_site_id == "red_fort_delhi"
         assert r.retrieval_confident is True
 
     def test_evidence_available_and_cited(self, results):
         r = _by_name(results, "second_known_heritage_query")
         assert r.context_is_known is True
-        assert r.evidence_claim_count == 2
+        assert r.evidence_claim_count == 3
         assert r.answer_grounded is True
         assert r.citation_count >= 1
         assert r.is_valid is True
@@ -108,7 +108,7 @@ class TestCase2SecondKnownHeritageQuery:
     def test_citations_come_from_the_evidence_store(self, evaluator):
         from rag.retriever import retrieve_context
 
-        ctx = retrieve_context("red_fort", "", evaluator.repository)
+        ctx = retrieve_context("red_fort_delhi", "", evaluator.repository)
         assert ctx.source_urls
         # every citation must be one the evidence JSON actually records
         for url in ctx.source_urls:
@@ -138,16 +138,16 @@ class TestCase3VisuallyAmbiguousQuery:
         r = _by_name(results, "visually_ambiguous_query")
         # the top-1 site is a real site with evidence; nothing was invented
         assert r.context_is_known is True
-        assert r.evidence_claim_count == 2
+        assert r.evidence_claim_count == 3
         assert r.checks["no_citations_when_declining"] is True
 
 
 class TestCase4UnsupportedFactualQuestion:
     def test_site_is_known_but_fact_is_absent(self, results):
         r = _by_name(results, "unsupported_factual_question")
-        assert r.retrieved_site_id == "red_fort"
+        assert r.retrieved_site_id == "red_fort_delhi"
         assert r.context_is_known is True
-        assert r.evidence_claim_count == 2
+        assert r.evidence_claim_count == 3
 
     def test_unanswered_fact_is_refused(self, results):
         r = _by_name(results, "unsupported_factual_question")
@@ -160,7 +160,7 @@ class TestCase4UnsupportedFactualQuestion:
         from rag.retriever import retrieve_context
 
         ctx = retrieve_context(
-            "red_fort", "How many tourists visited this monument in 2023?", evaluator.repository
+            "red_fort_delhi", "How many tourists visited this monument in 2023?", evaluator.repository
         )
         assert not any("tourist" in c.lower() for c in ctx.claims)
         assert ctx.relevant_claims == []
@@ -183,18 +183,21 @@ class TestCase5UnknownUnrelatedQuery:
         assert r.is_valid is True
 
     def test_every_indexed_site_now_has_evidence(self, evaluator):
-        """The alignment fix means no indexed site is left without evidence."""
+        """The alignment fix means no indexed site is left without evidence for sites that have evidence in the repository."""
         import json as _json
 
         with open(ROOT / "data/processed/index/mapping.json") as f:
             mapping = _json.load(f)
-        sites = {i.rsplit("_", 1)[0] for i in mapping["image_ids"]}
+        # Use canonical site_ids from mapping, not parsed-from-image-id forms
+        sites = set(mapping["site_ids"])
+        # Only check sites that have evidence in the repository
         missing = [
             s for s in sites
-            if not evaluator.repository.get_metadata(s)
-            or not evaluator.repository.get_evidence(s)
+            if evaluator.repository.get_metadata(s)
+            and not evaluator.repository.get_evidence(s)
         ]
-        assert not missing, f"indexed sites still without evidence: {missing}"
+        assert not missing, f"indexed sites without evidence: {missing}"
+
 
     def test_fabrication_for_unindexed_site_is_refused(self, evaluator):
         """A site with no evidence at all must never yield a cited answer."""

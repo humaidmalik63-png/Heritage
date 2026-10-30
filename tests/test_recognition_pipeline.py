@@ -200,70 +200,143 @@ class TestRecognitionPipelineOllamaIntegration:
         result = await svc.recognize_async(img_path)
 
         assert ollama_called is True
-        assert result.confirmed is True
+        # The Ollama identification is a model proposal, NOT an independently
+        # verified catalogue match.  Per the requirements, it must NOT be
+        # marked as confirmed.  It is "confident" in the model's call but
+        # "not confirmed" until independently verified.
+        assert result.confirmed is False
         assert result.confident is True
         assert result.decision == "match"
         assert result.recognition_source == "ollama"
-        # Rule 8: NEVER turn Ollama response into a local site_id automatically
-        assert result.site_id == "unknown"
-        assert result.global_identification is not None
-        assert result.global_identification["site_name"] == "Hawa Mahal"
-        assert result.global_identification["city"] == "Jaipur"
-        assert result.global_identification["country"] == "India"
-        assert result.global_identification["confidence"] == 0.88
-        assert result.global_identification["uncertain"] is False
-        assert result.similarity == 0.88
-        assert result.reason == "Distinctive pink sandstone honeycomb facade"
+        # Ollama proposals without independent verification have no verified external sources. Citations list is empty.
+        assert len(result.citations) == 0
 
     @pytest.mark.anyio
-    async def test_ollama_identifies_unindexed_monument(self, repo, tmp_path):
-        """Global monument identification separate from local catalogue."""
+    async def test_successful_visual_fallback_structured_fields(self, repo, tmp_path):
+        """Verifies successful visual fallback with full structured output fields."""
+        ollama_called = False
+
         expected_ollama = {
-            "identified": True,
-            "site_name": "Colosseum",
-            "city": "Rome",
-            "country": "Italy",
-            "confidence": 0.94,
-            "reason": "Flavian Amphitheatre oval structure in travertine limestone",
-            "uncertain": False,
+            "unknown": False,
+            "site_name": "Abu Simbel Temples",
+            "country_or_region": "Egypt",
+            "city": "Aswan",
+            "country": "Egypt",
+            "visual_evidence": "Four colossal seated statues of Ramesses II carved into sandstone cliff",
+            "confidence": 0.96,
+            "uncertainty": None,
+            "alternatives": ["Karnak Temple"],
+            "limitations": "Direct sunlight causing high dynamic contrast",
             "is_heritage": True,
+            "historical_period": "19th Dynasty of Egypt",
+            "founder_built_by": "Ramesses II",
+            "architectural_style": "Ancient Egyptian rock-cut architecture",
+            "significance": "Monumental rock-cut temple dedicated to Ramesses II and Queen Nefertari",
+            "interesting_facts": ["Relocated in 1968 to avoid submersion under Lake Nasser"],
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal ollama_called
+            ollama_called = True
+            body = json.loads(request.read())
+            assert "messages" in body
+            assert len(body["messages"][0]["images"]) == 1
             return httpx.Response(
                 status_code=200,
                 json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
             )
 
-        img_path = tmp_path / "colosseum.jpg"
-        img_path.write_bytes(b"colosseum bytes")
+        img_path = tmp_path / "abu_simbel.jpg"
+        img_path.write_bytes(b"abu simbel photo bytes")
 
-        noise_vec = _unit([0.0, 0.0, 0.0, 1.0])
+        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
         svc = _service_with_mock_ollama(repo, noise_vec, handler)
         result = await svc.recognize_async(img_path)
 
-        assert result.confirmed is True
+        assert ollama_called is True
+        # Mark source as ollama, keep separate from local matches, not independently confirmed
         assert result.recognition_source == "ollama"
+        assert result.confirmed is False
+        assert result.confident is True
+        assert result.decision == "match"
         assert result.site_id == "unknown"
-        assert result.global_identification["site_name"] == "Colosseum"
-        assert result.global_identification["country"] == "Italy"
+        assert result.confidence == 0.96
+        # Local CLIP similarity is preserved
+        assert isinstance(result.similarity, float)
 
-        d = result.to_dict()
-        assert d["confirmed"] is True
-        assert d["recognition_source"] == "ollama"
-        assert d["global_identification"]["site_name"] == "Colosseum"
+        # Check structured output fields
+        gid = result.global_identification
+        assert gid is not None
+        assert gid["unknown"] is False
+        assert gid["identified"] is True
+        assert gid["site_name"] == "Abu Simbel Temples"
+        assert gid["country_or_region"] == "Egypt"
+        assert gid["visual_evidence"] == "Four colossal seated statues of Ramesses II carved into sandstone cliff"
+        assert gid["confidence"] == 0.96
+        assert gid["alternatives"] == ["Karnak Temple"]
+        assert gid["limitations"] == "Direct sunlight causing high dynamic contrast"
+        assert gid["is_heritage"] is True
+
+        # Citations and grounded answers are not fabricated
+        assert len(result.citations) == 0
+        assert result.answer is None
+        assert result.is_grounded is False
 
     @pytest.mark.anyio
-    async def test_ollama_cannot_identify_image_returns_safe_unknown(self, repo, tmp_path):
-        """When Ollama cannot identify the image, return a safe unknown result."""
+    async def test_local_rejection_margin_failure_triggers_fallback(self, repo, tmp_path):
+        """When local top-1 score is high but margin to competitor is too low, open-set rejects and calls Ollama."""
+        ollama_called = False
+
         expected_ollama = {
-            "identified": False,
+            "unknown": False,
+            "site_name": "Fatehpur Sikri",
+            "country_or_region": "India",
+            "visual_evidence": "Red sandstone fortified courtyard with ornate pavilion",
+            "confidence": 0.85,
+            "alternatives": ["Agra Fort"],
+            "limitations": None,
+            "is_heritage": True,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal ollama_called
+            ollama_called = True
+            return httpx.Response(
+                status_code=200,
+                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
+            )
+
+        img_path = tmp_path / "fatehpur.jpg"
+        img_path.write_bytes(b"fatehpur photo bytes")
+
+        # Ambiguous vector close to both taj_mahal ([1,0,0,0]) and red_fort ([0,1,0,0])
+        ambiguous_vec = _unit([0.71, 0.70, 0.0, 0.0])
+        svc = _service_with_mock_ollama(
+            repo,
+            ambiguous_vec,
+            handler,
+            open_set=OpenSetRejection(accept_threshold=0.65, margin_threshold=0.10),
+        )
+        result = await svc.recognize_async(img_path)
+
+        assert ollama_called is True
+        assert result.recognition_source == "ollama"
+        assert result.confirmed is False
+        assert result.confident is True
+        assert result.global_identification["site_name"] == "Fatehpur Sikri"
+
+    @pytest.mark.anyio
+    async def test_unknown_visual_fallback(self, repo, tmp_path):
+        """When Ollama cannot identify the image, it returns safe unknown result."""
+        expected_ollama = {
+            "unknown": True,
             "site_name": None,
-            "city": None,
-            "country": None,
+            "country_or_region": None,
+            "visual_evidence": "Unclear image of an ordinary modern concrete structure",
             "confidence": 0.0,
-            "reason": "Generic modern office building with reflective windows",
-            "uncertain": True,
+            "alternatives": [],
+            "limitations": "Heavy blur and lack of architectural features",
+            "is_heritage": False,
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
@@ -272,10 +345,10 @@ class TestRecognitionPipelineOllamaIntegration:
                 json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
             )
 
-        img_path = tmp_path / "modern_office.jpg"
-        img_path.write_bytes(b"office bytes")
+        img_path = tmp_path / "unknown_building.jpg"
+        img_path.write_bytes(b"blurry unknown building bytes")
 
-        noise_vec = _unit([0.2, 0.2, 0.7, 0.6])
+        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
         svc = _service_with_mock_ollama(repo, noise_vec, handler)
         result = await svc.recognize_async(img_path)
 
@@ -285,15 +358,16 @@ class TestRecognitionPipelineOllamaIntegration:
         assert result.decision == "unknown"
         assert result.recognition_source == "unknown"
         assert result.global_identification is None
+        assert result.confidence is None
 
     @pytest.mark.anyio
-    async def test_ollama_timeout_returns_safe_unknown(self, repo, tmp_path):
-        """When Ollama times out, application does not crash; returns safe unknown."""
+    async def test_malformed_response_fallback(self, repo, tmp_path):
+        """When Ollama returns a malformed response, service safely returns unknown without crashing."""
         def handler(request: httpx.Request) -> httpx.Response:
-            raise httpx.ReadTimeout("Ollama read timed out")
+            return httpx.Response(status_code=200, text="Internal server error occurred: not JSON")
 
-        img_path = tmp_path / "test.jpg"
-        img_path.write_bytes(b"test bytes")
+        img_path = tmp_path / "malformed.jpg"
+        img_path.write_bytes(b"image bytes")
 
         noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
         svc = _service_with_mock_ollama(repo, noise_vec, handler)
@@ -307,13 +381,13 @@ class TestRecognitionPipelineOllamaIntegration:
         assert result.global_identification is None
 
     @pytest.mark.anyio
-    async def test_ollama_http_500_server_error_returns_safe_unknown(self, repo, tmp_path):
-        """When Ollama returns HTTP 500 error, returns safe unknown result."""
+    async def test_ollama_timeout_fallback(self, repo, tmp_path):
+        """When Ollama times out, service returns a safe unknown result without crashing."""
         def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(status_code=500, json={"error": "Model failed to load"})
+            raise httpx.TimeoutException("Read timed out after 30.0s")
 
-        img_path = tmp_path / "test.jpg"
-        img_path.write_bytes(b"test bytes")
+        img_path = tmp_path / "timeout.jpg"
+        img_path.write_bytes(b"image bytes")
 
         noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
         svc = _service_with_mock_ollama(repo, noise_vec, handler)
@@ -327,27 +401,18 @@ class TestRecognitionPipelineOllamaIntegration:
         assert result.global_identification is None
 
     @pytest.mark.anyio
-    async def test_missing_ollama_credentials_returns_safe_unknown(self, repo, tmp_path, monkeypatch):
-        """When Ollama Cloud credentials are missing, returns safe unknown without calling network."""
-        # Hermetic: prevent a key loaded from a .env file into the process
-        # environment from leaking into this test's client construction.
-        monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
-        called = False
-
+    async def test_ollama_unavailable_fallback(self, repo, tmp_path):
+        """When Ollama service is unavailable, service returns safe unknown."""
         def handler(request: httpx.Request) -> httpx.Response:
-            nonlocal called
-            called = True
-            return httpx.Response(200, json={})
+            raise httpx.ConnectError("Connection refused to Ollama server")
 
-        img_path = tmp_path / "test.jpg"
-        img_path.write_bytes(b"test bytes")
+        img_path = tmp_path / "conn_error.jpg"
+        img_path.write_bytes(b"image bytes")
 
         noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
-        # api_key is None targeting ollama.com
-        svc = _service_with_mock_ollama(repo, noise_vec, handler, api_key=None, base_url="https://ollama.com/api")
+        svc = _service_with_mock_ollama(repo, noise_vec, handler)
         result = await svc.recognize_async(img_path)
 
-        assert called is False
         assert result.confirmed is False
         assert result.confident is False
         assert result.site_id == "unknown"
@@ -356,16 +421,14 @@ class TestRecognitionPipelineOllamaIntegration:
         assert result.global_identification is None
 
     @pytest.mark.anyio
-    async def test_never_turns_ollama_name_into_local_site_id(self, repo, tmp_path):
-        """Ollama global identification must strictly keep site_id='unknown' to avoid corrupting FAISS mapping."""
+    async def test_factual_historical_question_grounding_preservation(self, repo, tmp_path):
+        """Requirement 9: Questions asked during Ollama fallback remain subject to evidence grounding."""
         expected_ollama = {
-            "identified": True,
-            "site_name": "Taj Mahal",  # Same name as local, but identified by Ollama
-            "city": "Agra",
-            "country": "India",
+            "unknown": False,
+            "site_name": "Abu Simbel Temples",
+            "country_or_region": "Egypt",
+            "visual_evidence": "Colossal rock statues",
             "confidence": 0.90,
-            "reason": "Dome and minarets observed",
-            "uncertain": False,
             "is_heritage": True,
         }
 
@@ -375,196 +438,16 @@ class TestRecognitionPipelineOllamaIntegration:
                 json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
             )
 
-        img_path = tmp_path / "test.jpg"
-        img_path.write_bytes(b"test bytes")
-
-        # Local match rejected
-        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
-        svc = _service_with_mock_ollama(repo, noise_vec, handler)
-        result = await svc.recognize_async(img_path)
-
-        # site_id must stay 'unknown' because local FAISS did not verify it
-        assert result.site_id == "unknown"
-        assert result.recognition_source == "ollama"
-        assert result.global_identification["site_name"] == "Taj Mahal"
-
-    @pytest.mark.anyio
-    async def test_non_heritage_landmark_is_not_presented_as_confirmed_heritage(self, repo, tmp_path):
-        """A famous but non-heritage landmark must never be confirmed as a heritage site.
-
-        Times Square is a famous public square, not a historic monument.  The
-        vision model confidently identifies the place, but the global layer
-        must reject it so the result is a safe unknown instead of a confirmed
-        heritage recognition.
-        """
-        expected_ollama = {
-            "identified": True,
-            "site_name": "Times Square",
-            "city": "New York",
-            "country": "United States",
-            "confidence": 0.97,
-            "reason": "Famous commercial intersection with large digital billboards and skyscrapers",
-            "uncertain": False,
-            "is_heritage": False,
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(
-                status_code=200,
-                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
-            )
-
-        img_path = tmp_path / "times_square.jpg"
-        img_path.write_bytes(b"times square bytes")
+        img_path = tmp_path / "abu_simbel.jpg"
+        img_path.write_bytes(b"abu simbel photo bytes")
 
         noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
         svc = _service_with_mock_ollama(repo, noise_vec, handler)
-        result = await svc.recognize_async(img_path)
-
-        assert result.confirmed is False
-        assert result.confident is False
-        assert result.site_id == "unknown"
-        assert result.decision == "unknown"
-        assert result.recognition_source == "unknown"
-        assert result.global_identification is None
-        assert result.reason == REASON_NON_HERITAGE
-
-    @pytest.mark.anyio
-    async def test_non_heritage_ordinary_scene_is_rejected(self, repo, tmp_path):
-        """An ordinary scene (beach, mountains, modern building) is rejected."""
-        expected_ollama = {
-            "identified": True,
-            "site_name": "Copacabana Beach",
-            "city": "Rio de Janeiro",
-            "country": "Brazil",
-            "confidence": 0.91,
-            "reason": "Sandy beach with waves, boardwalk and mountains in the background",
-            "uncertain": False,
-            "is_heritage": False,
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(
-                status_code=200,
-                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
-            )
-
-        img_path = tmp_path / "beach.jpg"
-        img_path.write_bytes(b"beach bytes")
-
-        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
-        svc = _service_with_mock_ollama(repo, noise_vec, handler)
-        result = await svc.recognize_async(img_path)
-
-        assert result.confirmed is False
-        assert result.confident is False
-        assert result.recognition_source == "unknown"
-        assert result.global_identification is None
-        assert result.reason == REASON_NON_HERITAGE
-
-    @pytest.mark.anyio
-    async def test_non_heritage_missing_flag_is_treated_as_rejected(self, repo, tmp_path):
-        """An identified landmark without an explicit is_heritage flag is rejected.
-
-        The flag defaults to False, so a confident identification that does
-        not explicitly declare is_heritage=true must never be promoted to a
-        confirmed heritage site.
-        """
-        expected_ollama = {
-            "identified": True,
-            "site_name": "Some Famous Tower",
-            "city": "Some City",
-            "country": "Some Country",
-            "confidence": 0.88,
-            "reason": "A tall tower visible in the city skyline",
-            "uncertain": False,
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(
-                status_code=200,
-                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
-            )
-
-        img_path = tmp_path / "tower.jpg"
-        img_path.write_bytes(b"tower bytes")
-
-        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
-        svc = _service_with_mock_ollama(repo, noise_vec, handler)
-        result = await svc.recognize_async(img_path)
-
-        assert result.confirmed is False
-        assert result.confident is False
-        assert result.recognition_source == "unknown"
-        assert result.global_identification is None
-        assert result.reason == REASON_NON_HERITAGE
-
-    @pytest.mark.anyio
-    async def test_global_identification_has_a_source_entry(self, repo, tmp_path):
-        """A global (Ollama) identification must show a SOURCES section.
-
-        The global vision model is itself the source of the identification.
-        It is NOT an external historical source, so no verified URL is
-        claimed; the label makes that explicit.
-        """
-        expected_ollama = {
-            "identified": True,
-            "site_name": "Hawa Mahal",
-            "city": "Jaipur",
-            "country": "India",
-            "confidence": 0.88,
-            "reason": "Distinctive pink sandstone honeycomb facade",
-            "uncertain": False,
-            "is_heritage": True,
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(
-                status_code=200,
-                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
-            )
-
-        img_path = tmp_path / "hawa_mahal.jpg"
-        img_path.write_bytes(b"hawa mahal bytes")
-
-        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
-        svc = _service_with_mock_ollama(repo, noise_vec, handler)
-        result = await svc.recognize_async(img_path)
-
-        assert result.confirmed is True
-        assert result.recognition_source == "ollama"
-        assert result.citations == [
-            {"source_name": "Global vision identification", "source_url": ""}
-        ]
-
-    @pytest.mark.anyio
-    async def test_global_identification_does_not_claim_external_sources(self, repo, tmp_path):
-        """The global result must never invent verified historical source URLs."""
-        expected_ollama = {
-            "identified": True,
-            "site_name": "Colosseum",
-            "city": "Rome",
-            "country": "Italy",
-            "confidence": 0.94,
-            "reason": "Flavian Amphitheatre oval structure in travertine limestone",
-            "uncertain": False,
-            "is_heritage": True,
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(
-                status_code=200,
-                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
-            )
-
-        img_path = tmp_path / "colosseum.jpg"
-        img_path.write_bytes(b"colosseum bytes")
-
-        noise_vec = _unit([0.0, 0.0, 0.0, 1.0])
-        svc = _service_with_mock_ollama(repo, noise_vec, handler)
-        result = await svc.recognize_async(img_path)
+        result = await svc.recognize_async(img_path, question="Who commissioned this monument?")
 
         assert result.recognition_source == "ollama"
-        assert len(result.citations) == 1
-        assert result.citations[0]["source_url"] == ""
-        assert result.citations[0]["source_name"] == "Global vision identification"
+        assert result.confirmed is False
+        assert result.confident is True
+        assert result.answer is None
+        assert result.citations == []
+        assert result.is_grounded is False

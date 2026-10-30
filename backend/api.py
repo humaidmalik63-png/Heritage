@@ -53,11 +53,20 @@ app = FastAPI(
 )
 
 # Allow the local frontends to call POST /recognize.
+# Production origins can be supplied via the ALLOWED_ORIGINS environment
+# variable as a comma-separated string; localhost defaults are preserved.
+raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+if not allowed_origins:
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8080",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:8080",],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -239,7 +239,7 @@ def default_cases(evaluator: GroundedEvaluator, root: Path) -> List[EvalCase]:
     taj_ctx = retrieve_context("taj_mahal", "", evaluator.repository)
     taj_claim = taj_ctx.claims[0] if taj_ctx.claims else None
 
-    red_ctx = retrieve_context("red_fort", "", evaluator.repository)
+    red_ctx = retrieve_context("red_fort_delhi", "", evaluator.repository)
     red_claim = red_ctx.claims[0] if red_ctx.claims else None
 
     # A fixed, deterministic non-heritage vector, so the "unknown" case does
@@ -265,7 +265,7 @@ def default_cases(evaluator: GroundedEvaluator, root: Path) -> List[EvalCase]:
             name="second_known_heritage_query",
             question="Where is the Red Fort located?",
             image_path=str(red_test),
-            expected_site_id="red_fort",
+            expected_site_id="red_fort_delhi",
             expect_evidence=True,
             expect_grounded=True,
             provider_response=red_claim,
@@ -288,7 +288,7 @@ def default_cases(evaluator: GroundedEvaluator, root: Path) -> List[EvalCase]:
             name="unsupported_factual_question",
             question="How many tourists visited this monument in 2023?",
             image_path=str(red_test),
-            expected_site_id="red_fort",
+            expected_site_id="red_fort_delhi",
             expect_evidence=True,
             expect_grounded=False,
             provider_response=None,

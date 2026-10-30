@@ -1,0 +1,53 @@
+{
+ "image_ids": [
+  "ajanta_caves_fallback",
+  "qutub_minar_fallback",
+  "konark_sun_temple_fallback",
+  "taj_mahal_fallback",
+  "adziubzha_church_georgia_01",
+  "akhutsa_fortress_abkhazia_01",
+  "ambara_church_georgia_01",
+  "anacopia_fortress_republic_of__01",
+  "aradu_church_abkhazia_01",
+  "azanta_castle_georgia_01",
+  "category_casbah_of_algiers_algeria_01",
+  "fort_amsterdam_curacao_01",
+  "queen_of_the_most_holy_rosary_cathedral_willemstad_kingdom_of_t_01",
+  "svislac_castle_belarus_01",
+  "cathedrale_notre_dame_de_l_immaculee_conception_in_porto_novo_benin_01"
+ ],
+ "paths": [
+  "frontend_new\\assets\\images\\sites\\ajanta_caves.webp",
+  "frontend_new\\assets\\images\\sites\\qutub_minar.webp",
+  "frontend_new\\assets\\images\\sites\\konark_sun_temple.webp",
+  "frontend_new\\assets\\images\\sites\\taj_mahal.webp",
+  "data/raw/global/adziubzha_church_georgia/File_3AAdzubja_church.jpg",
+  "data/raw/global/akhutsa_fortress_abkhazia/Akhutsa_Fortress_01.jpg",
+  "data/raw/global/ambara_church_georgia/Mussera.jpg",
+  "data/raw/global/anacopia_fortress_republic_of_/2014_Nowy_Aton__Ruiny_baszty__01.jpg",
+  "data/raw/global/aradu_church_abkhazia/Aradu_Church_01.jpg",
+  "data/raw/global/azanta_castle_georgia/Azanta_Castle.jpg",
+  "data/raw/global/category_casbah_of_algiers_algeria/20141113-_DSC0030-3__15886832612.jpg",
+  "data/raw/global/fort_amsterdam_curacao/Arbeiders_aan_het_werk_in_het_koninklijk_verblijf_in_Fort_Amsterdam_in_Willemsta.jpg",
+  "data/raw/global/queen_of_the_most_holy_rosary_cathedral_willemstad_kingdom_of_t/Bust_of_Ludovicus_Jansen.jpg",
+  "data/raw/global/svislac_castle_belarus/vis_a_.____07.2007.jpg",
+  "data/raw/global/cathedrale_notre_dame_de_l_immaculee_conception_in_porto_novo_benin/Au_P_re_Francis_Aupiais.jpg"
+ ],
+ "site_ids": [
+  "ajanta_caves",
+  "qutub_minar",
+  "konark_sun_temple",
+  "taj_mahal",
+  "adziubzha_church_georgia",
+  "akhutsa_fortress_abkhazia",
+  "ambara_church_georgia",
+  "anacopia_fortress_republic_of_",
+  "aradu_church_abkhazia",
+  "azanta_castle_georgia",
+  "category_casbah_of_algiers_algeria",
+  "fort_amsterdam_curacao",
+  "queen_of_the_most_holy_rosary_cathedral_willemstad_kingdom_of_t",
+  "svislac_castle_belarus",
+  "cathedrale_notre_dame_de_l_immaculee_conception_in_porto_novo_benin"
+ ]
+}

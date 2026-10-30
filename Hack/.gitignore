@@ -1,6 +1,0 @@
-node_modules
-dist
-.impeccable/config.local.json
-.env.local
-.DS_Store
-*.tsbuildinfo
