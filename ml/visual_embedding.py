@@ -47,7 +47,8 @@ def _load_model(device: Optional[str] = None) -> None:
             "Install it with: pip install torch --index-url "
             "https://download.pytorch.org/whl/cpu"
         )
-    from transformers import AutoModel, AutoProcessor, AutoConfig
+    import gc
+    from transformers import CLIPVisionModelWithProjection, AutoModel, AutoProcessor, AutoConfig
 
     # Determine device
     if device is None:
