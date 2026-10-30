@@ -216,6 +216,17 @@
     return window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches;
   }
 
+  function debounce(fn, wait) {
+    var timer;
+    return function () {
+      var context = this, args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        fn.apply(context, args);
+      }, wait);
+    };
+  }
+
   /* ── router ───────────────────────────────────────────────────────────── */
 
   var views = {};
@@ -1184,16 +1195,24 @@
     };
 
     // Listeners for window scroll, visibility and responsive resizing
-    window.addEventListener('resize', function () {
+    var handleResize = debounce(function () {
       if (activeSlide && SLIDESHOW_CONFIG[currentIndex]) {
-        activeSlide.style.backgroundPosition = getSlidePosition(SLIDESHOW_CONFIG[currentIndex]);
+        var cur = SLIDESHOW_CONFIG[currentIndex];
+        activeSlide.style.backgroundPosition = getSlidePosition(cur);
+        var expectedUrl = getSlideUrl(cur);
+        if (expectedUrl && activeSlide.style.backgroundImage.indexOf(expectedUrl) === -1) {
+          activeSlide.style.backgroundImage = 'url("' + expectedUrl + '")';
+        }
       }
       if (isExperienceSuspended()) {
         stopTimer();
       } else if (!timer) {
         scheduleNext();
       }
-    }, { passive: true });
+    }, 120);
+
+    window.addEventListener('resize', handleResize, { passive: true });
+    window.addEventListener('orientationchange', handleResize, { passive: true });
 
     window.addEventListener('scroll', function () {
       if (isExperienceSuspended()) {

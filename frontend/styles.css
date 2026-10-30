@@ -32,9 +32,9 @@
                   "Bodoni MT", "Georgia", "Cambria", var(--font-sans);
 
   /* fluid scale */
-  --u: clamp(0.75rem, 0.68rem + 0.32vw, 0.88rem);      /* micro label */
-  --shell: min(1440px, 100% - clamp(2rem, 7vw, 9rem));
-  --gap: clamp(1rem, 2.2vw, 2.25rem);
+  --u: clamp(0.72rem, 0.65rem + 0.28vw, 0.88rem);      /* micro label */
+  --shell: min(1440px, 100% - clamp(1.5rem, 5.5vw, 9rem));
+  --gap: clamp(0.85rem, 2vw, 2.25rem);
 
   /* motion */
   --ease: cubic-bezier(.22, .61, .36, 1);
@@ -45,7 +45,7 @@
   /* geometry */
   --chamfer: 12px;
   --frame-inset: clamp(10px, 1.5vw, 22px);
-  --topbar-h: 68px;
+  --topbar-h: clamp(54px, 4vw + 32px, 68px);
 }
 
 /* ── cinematic loader overlay ────────────────────────────────────────────── */
@@ -645,7 +645,7 @@ body.js-ready .story-reveal:not(.is-revealed) .eyebrow__tick {
 .brand__text { display: grid; line-height: 1.05; }
 .brand__name {
   font-family: var(--font-label);
-  font-size: .95rem; font-weight: 700;
+  font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1rem); font-weight: 700;
   letter-spacing: .26em;
 }
 .brand__sub {
@@ -1223,7 +1223,7 @@ body.js-ready .pipeline__stage:nth-child(4) { transition-delay: 0.30s; }
   margin-inline: calc(-1 * clamp(1.25rem, 6vw, 7rem));
   padding-inline: clamp(1.25rem, 6vw, 7rem);
   padding-top: clamp(1.25rem, 2.5vh, 1.85rem);
-  padding-bottom: clamp(1rem, 2.2vh, 1.5rem);
+  padding-bottom: max(clamp(1rem, 2.2vh, 1.5rem), env(safe-area-inset-bottom, 0));
 }
 .dock__cell {
   padding: 0.6rem 1.25rem 0.6rem 0;
@@ -1393,7 +1393,7 @@ body.js-ready .pipeline__stage:nth-child(4) { transition-delay: 0.30s; }
   background: rgba(255, 255, 255, .03);
   border: 1px solid var(--hairline);
   color: var(--text);
-  font-size: .95rem;
+  font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1rem);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
@@ -1678,7 +1678,7 @@ select.field__input option { background: #0C0F16; color: var(--text); }
   display: flex; align-items: center; gap: .7em;
 }
 .result__label::after { content: ""; flex: 1; height: 1px; background: var(--hairline-soft); }
-.result__text { color: var(--text-2); max-width: 74ch; }
+.result__text { color: var(--text-2); max-width: 74ch; overflow-wrap: break-word; word-break: break-word; }
 .result__text strong { color: var(--text); font-weight: 500; }
 
 /* stacked label/value rows inside an About block */
@@ -1688,6 +1688,8 @@ select.field__input option { background: #0C0F16; color: var(--text); }
   color: var(--text-2);
   font-size: .94rem;
   max-width: 74ch;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .factlist { display: grid; gap: .5rem; }
@@ -2360,32 +2362,100 @@ select.field__input option { background: #0C0F16; color: var(--text); }
   .frame__edge, .frame::before { will-change: opacity, transform; }
 }
 
-/* ══ responsive ═══════════════════════════════════════════════════════════ */
+/* ══ responsive design system ═══════════════════════════════════════════════ */
 
-/* desktop / large tablet: show the chapter rail */
-@media (min-width: 1100px) {
+/* ── 1. Ultrawide monitors & large displays (> 1920px, 21:9 aspect ratio) ─ */
+@media (min-width: 1921px) {
+  :root {
+    --shell: min(1800px, 100% - clamp(3.5rem, 8vw, 16rem));
+    --frame-inset: clamp(18px, 1.5vw, 32px);
+    --topbar-h: 74px;
+  }
+  .hero__inner {
+    max-width: min(980px, 55vw);
+  }
+  .hero__title {
+    font-size: clamp(3.6rem, 2rem + 4.5vw, 6.8rem);
+  }
+  .hero__desc {
+    font-size: clamp(1.08rem, 0.95rem + 0.35vw, 1.28rem);
+    max-width: 58ch;
+  }
+  .rail {
+    right: clamp(2.5rem, 5vw, 6rem);
+  }
+  .monument-grid {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  }
+  .about-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── 2. Standard desktops & laptops (1025px – 1920px) ─────────────────────── */
+@media (min-width: 1025px) {
   .rail { display: flex; }
-  .hero__inner { padding-left: clamp(2rem, 6vw, 5rem); }
+  .hero__inner { padding-left: clamp(1.5rem, 5vw, 5rem); }
+  .nav { display: block; }
+  .menu-toggle { display: none; }
 }
 
-/* below desktop: nav collapses into the glass menu */
-@media (max-width: 1099px) {
-  .nav { display: none; }
-  .menu-toggle { display: inline-flex; }
-  .topbar__actions { margin-left: auto; }
-  .hero__inner { max-width: 100%; }
-}
+/* ── 3. Tablets (769px – 1024px: landscape & portrait large tablets) ──────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --frame-inset: clamp(10px, 1.5vw, 16px);
+    --topbar-h: 60px;
+    --shell: min(100%, 100% - clamp(1.5rem, 4vw, 3rem));
+  }
+  /* Preserve horizontal nav with reduced typography and spacing */
+  .nav { display: block; }
+  .menu-toggle { display: none; }
+  .topbar {
+    padding: var(--frame-inset) clamp(0.75rem, 2vw, 1.5rem) 0;
+    gap: clamp(0.5rem, 1.2vw, 1rem);
+  }
+  .nav__list {
+    gap: clamp(0.25rem, 0.9vw, 0.8rem);
+  }
+  .nav__link {
+    font-size: clamp(0.68rem, 0.62rem + 0.15vw, 0.76rem);
+    letter-spacing: 0.14em;
+    padding: 0.45rem 0.25rem;
+  }
+  .brand__name {
+    font-size: 0.88rem;
+    letter-spacing: 0.2em;
+  }
+  .brand__sub {
+    font-size: 0.52rem;
+    letter-spacing: 0.3em;
+  }
+  .btn--sm {
+    min-height: 38px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.72rem;
+  }
 
-@media (max-width: 980px) {
+  /* Rail hidden on tablets to allow hero text full width */
+  .rail { display: none; }
+  .hero__inner {
+    max-width: min(720px, 92vw);
+    padding-left: 0;
+  }
+  .hero__title {
+    font-size: clamp(2.6rem, 1.5rem + 4.5vw, 4.2rem);
+  }
+
+  /* Tablet dock: multi-column compact layout (3-column top row, full width chapter) */
   .dock {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding-top: 1.15rem;
-    padding-bottom: 0.85rem;
-    gap: 0.75rem 1rem;
+    padding-top: 1.1rem;
+    padding-bottom: 0.95rem;
+    gap: 0.65rem 0.9rem;
   }
   .dock__cell {
     border-right: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 0.35rem 0.5rem 0.35rem 0;
+    padding: 0.4rem 0.6rem 0.4rem 0;
   }
   .dock__cell:not(:first-child) {
     padding-left: 0;
@@ -2394,31 +2464,73 @@ select.field__input option { background: #0C0F16; color: var(--text); }
     grid-column: span 3;
     border-bottom: 0;
     border-right: 0;
+    padding-top: 0.25rem;
+  }
+
+  .monument-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  }
+  .detail__cols {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   }
 }
 
+/* ── 4. Mobile & Portrait Tablets (<= 768px) ──────────────────────────────── */
 @media (max-width: 768px) {
-  :root { --chamfer: 12px; }
-
-  .hero__veil {
-    background:
-      linear-gradient(180deg, rgba(5, 6, 8, .86) 0%, rgba(5, 6, 8, .60) 42%, rgba(5, 6, 8, .48) 100%),
-      linear-gradient(90deg, rgba(5, 6, 8, .80) 0%, rgba(5, 6, 8, .52) 100%);
+  :root {
+    --chamfer: 10px;
+    --frame-inset: 8px;
+    --topbar-h: 58px;
+    --shell: min(100%, 100% - clamp(1rem, 4vw, 2rem));
   }
 
+  /* Mobile navigation: collapse into compact hamburger toggle */
+  .nav { display: none; }
+  .menu-toggle { display: inline-flex; }
+  .topbar__actions { margin-left: auto; gap: 0.6rem; }
+  .rail { display: none; }
+
+  /* Hero adjustments for portrait mobile */
+  .hero {
+    padding-inline: clamp(1rem, 4vw, 2rem);
+    padding-bottom: 0;
+  }
+  .hero__inner {
+    max-width: 100%;
+    padding-left: 0;
+    padding-bottom: clamp(1rem, 3vh, 2rem);
+  }
+  .hero__veil {
+    background:
+      linear-gradient(180deg, rgba(5, 6, 8, .88) 0%, rgba(5, 6, 8, .55) 30%, rgba(5, 6, 8, .62) 65%, rgba(5, 6, 8, .92) 100%),
+      linear-gradient(90deg, rgba(5, 6, 8, .85) 0%, rgba(5, 6, 8, .50) 100%);
+  }
+  .hero__title {
+    font-size: clamp(2.1rem, 1.2rem + 4.8vw, 3.4rem);
+    line-height: 1.05;
+  }
+  .hero__desc {
+    max-width: 100%;
+    font-size: clamp(0.9rem, 0.85rem + 0.25vw, 1.05rem);
+    margin-bottom: 1.5rem;
+  }
+
+  /* Dock in mobile: 2-column grid + span 2 for chapter */
   .dock {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-inline: clamp(1rem, 4vw, 2rem);
+    margin-inline: calc(-1 * clamp(1rem, 4vw, 2rem));
     padding-bottom: max(0.85rem, env(safe-area-inset-bottom, 0));
-    padding-top: 1.15rem;
+    padding-top: 1rem;
+    gap: 0.5rem 0.75rem;
+    border: none;
     background: linear-gradient(
       180deg,
       transparent 0%,
-      rgba(5, 7, 11, 0.32) 15%,
-      rgba(5, 7, 11, 0.70) 55%,
-      rgba(5, 7, 11, 0.88) 100%
+      rgba(5, 7, 11, 0.35) 15%,
+      rgba(5, 7, 11, 0.72) 55%,
+      rgba(5, 7, 11, 0.90) 100%
     );
-    border: none;
-    gap: 0.5rem 0.75rem;
   }
   .dock__cell {
     border-right: 0;
@@ -2433,38 +2545,46 @@ select.field__input option { background: #0C0F16; color: var(--text); }
     border-bottom: 0;
     padding-left: 0;
   }
+  .dock__nav-btn {
+    min-width: 32px;
+    min-height: 32px;
+    width: 32px;
+    height: 32px;
+  }
 
+  /* Upload & Recognition responsiveness */
+  .upload { padding: clamp(1.25rem, 4vw, 2.25rem); }
   .upload__preview { grid-template-columns: 1fr; text-align: center; }
   .upload__actions { justify-content: center; }
-
   .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
+  /* Architecture & Detail */
   .arch__node { grid-template-columns: 2.2rem minmax(0, 1fr); row-gap: .3rem; }
   .arch__note, .arch__branches { grid-column: 2; }
   .arch__node + .arch__node::before { left: 1rem; }
-
-  .detail__cols {
-    grid-template-columns: 1fr;
-  }
+  .detail__cols { grid-template-columns: 1fr; }
 }
 
+/* ── 5. Standard & Large Phones (<= 560px) ─────────────────────────────────── */
 @media (max-width: 560px) {
-  :root { --frame-inset: 8px; --topbar-h: 58px; }
+  :root {
+    --frame-inset: 6px;
+    --topbar-h: 56px;
+  }
 
   .brand__sub { display: none; }
   .menu-toggle__label { display: none; }
-  .menu-toggle { padding: .6rem .8rem; min-height: 44px; min-width: 44px; }
+  .menu-toggle { padding: .55rem .75rem; min-height: 44px; min-width: 44px; }
 
-  .hero { padding-bottom: 0; }
   .hero__inner { padding-left: 0; }
   .hero__eyebrow { flex-wrap: wrap; row-gap: 0.35rem; }
-  .hero__cta { width: 100%; }
+  .hero__cta { width: 100%; flex-direction: column; }
   .hero__cta .btn { flex: 1 1 100%; width: 100%; min-height: 48px; }
 
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .monument-grid { grid-template-columns: 1fr; }
   .filters { flex-direction: column; align-items: stretch; }
-  .filters .field, .filters .btn { flex: 1 1 auto; width: 100%; min-height: 44px; }
+  .filters .field, .filters .btn { flex: 1 1 auto; width: 100%; min-height: 46px; }
 
   .result__banner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .result__status { margin-left: 0; width: 100%; }
@@ -2472,25 +2592,166 @@ select.field__input option { background: #0C0F16; color: var(--text); }
   .footer__inner { flex-direction: column; align-items: flex-start; }
 
   .upload__actions .btn { flex: 1 1 100%; width: 100%; min-height: 44px; }
+  .recognition-actions { flex-direction: column; align-items: stretch; }
+  .recognition-actions .btn { width: 100%; min-height: 48px; }
 }
 
-/* very small phones: keep type legible, drop the dock to one column pair */
-@media (max-width: 400px) {
-  .dock { grid-template-columns: 1fr; gap: 0.4rem; }
-  .dock__cell { border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
-  .dock__cell--wide { grid-column: span 1; border-bottom: 0; }
-  .pipeline { grid-template-columns: 1fr; }
-  .hero__title { font-size: clamp(1.9rem, 8.5vw, 2.5rem); }
-  .brand__name { letter-spacing: .18em; font-size: 0.85rem; }
+/* ── 6. Small Phones (<= 375px: 320px–375px, e.g. iPhone SE, Galaxy Fold) ─── */
+@media (max-width: 375px) {
+  :root {
+    --frame-inset: 4px;
+    --topbar-h: 52px;
+  }
+
+  .frame__edge {
+    width: 20px;
+    height: 20px;
+  }
+
+  .topbar {
+    padding-inline: 0.5rem;
+    gap: 0.4rem;
+  }
+  .brand__mark {
+    width: 30px;
+    height: 30px;
+  }
+  .brand__name {
+    letter-spacing: .14em;
+    font-size: 0.82rem;
+  }
+  .btn--sm {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.68rem;
+    min-height: 38px;
+  }
+  .menu-toggle {
+    padding: 0.5rem 0.65rem;
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .hero__title {
+    font-size: clamp(1.55rem, 7.5vw, 1.95rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .hero__desc {
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .dock {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.5rem;
+    padding-top: 0.75rem;
+    padding-bottom: max(0.65rem, env(safe-area-inset-bottom, 0));
+  }
+  .dock__cell {
+    padding: 0.35rem 0.25rem 0.35rem 0;
+  }
+  .dock__k {
+    font-size: 0.52rem;
+    letter-spacing: 0.18em;
+  }
+  .dock__v {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+  .dock__nav-btn {
+    min-width: 30px;
+    min-height: 30px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pipeline__stage { padding: 0.75rem 0.5rem; }
+  .pipeline__name { font-size: 0.62rem; }
+  .result__body { padding: 1rem; gap: 1.2rem; }
+  .result__name { font-size: clamp(1.3rem, 1rem + 1.8vw, 1.8rem); }
 }
 
-/* short landscape phones: the hero must not overflow */
+/* ── 7. Landscape Mobile Screens (Height <= 520px, e.g. 568x320, 812x375) ──── */
 @media (max-height: 520px) and (orientation: landscape) {
-  .view--home, .hero { min-height: 580px; height: auto; }
-  .rail { display: none; }
+  :root {
+    --topbar-h: 46px;
+    --frame-inset: 6px;
+  }
+  .view--home, .hero {
+    min-height: max(100svh, 400px);
+    height: auto;
+    overflow: visible;
+  }
+  .rail { display: none !important; }
+  .hero {
+    padding-top: calc(var(--topbar-h) + var(--frame-inset) + 0.4rem);
+    padding-bottom: 0;
+  }
+  .hero__inner {
+    padding-bottom: 0.5rem;
+  }
+  .hero__eyebrow {
+    margin-bottom: 0.4rem;
+  }
+  .hero__title {
+    font-size: clamp(1.4rem, 4.6vh, 2.1rem);
+    line-height: 1.05;
+    margin-bottom: 0.35rem;
+  }
+  .hero__desc {
+    font-size: 0.84rem;
+    line-height: 1.4;
+    margin-bottom: 0.6rem;
+    max-width: 50ch;
+  }
+  .hero__cta {
+    flex-direction: row;
+    gap: 0.6rem;
+  }
+  .hero__cta .btn {
+    min-height: 38px;
+    width: auto;
+    padding: 0.45rem 1rem;
+    font-size: 0.72rem;
+  }
+  .dock {
+    padding-top: 0.5rem;
+    padding-bottom: max(0.45rem, env(safe-area-inset-bottom, 0));
+    gap: 0.3rem 0.75rem;
+  }
+  .dock__cell {
+    padding: 0.25rem 0.4rem 0.25rem 0;
+  }
+  .dock__k { font-size: 0.5rem; }
+  .dock__v { font-size: 0.68rem; }
 }
 
-/* touch devices and small tablets: disable cinematic cursor */
+/* ── 8. Aspect-Ratio Specific Adaptations ─────────────────────────────────── */
+
+/* Ultrawide aspect ratio (>= 21/9) */
+@media (min-aspect-ratio: 21/9) {
+  .hero__bg {
+    top: -12%;
+    bottom: -12%;
+  }
+  .hero__slide {
+    background-position: 50% 42% !important;
+  }
+}
+
+/* Portrait aspect ratio (<= 1/1, e.g. phones and tablets) */
+@media (max-aspect-ratio: 1/1) {
+  .hero__bg {
+    left: -10%;
+    right: -10%;
+  }
+  .hero__slide {
+    background-position: 50% 35%;
+  }
+}
+
+/* ── 9. Touch devices: disable cinematic cursor and stuck hover states ────── */
 @media (hover: none), (pointer: coarse), (max-width: 900px) {
   .cursor-spotlight, .cursor-dot { display: none !important; }
 }
