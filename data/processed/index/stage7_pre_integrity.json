@@ -1,9 +1,0 @@
-{
-  "active_index_sha256": "a61bf663ad5e78acdfb44cd0fedea43854b879cd7c28d332d9dcd6fe32dafb9a",
-  "active_mapping_sha256": "adb9911d90fc1f699676647f100dee40196c66769bcf530d59c6b5fd429913f0",
-  "active_vectors": 40,
-  "active_dimension": 512,
-  "backup_index_sha256": "de32d554375c58c6cf6befc0c8cdf1268934e8814e48d53e4486d437e58caaa6",
-  "backup_mapping_sha256": "dbb135ff693ffcadab0ba701cf643854e1ece1baf19552083c0d1cb901ecd51c",
-  "backups_intact": true
-}
