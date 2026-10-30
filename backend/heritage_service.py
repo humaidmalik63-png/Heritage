@@ -14,12 +14,17 @@ from typing import Any, Dict, List, Optional, Union
 
 import concurrent.futures
 import logging
+import os
 import numpy as np
 
 from data.evidence.loader import EvidenceRepository, load_repository
 from ml.confidence import ConfidenceLayer, RetrievalConfig, build_confidence_layer
 from ml.open_set import OpenSetDecision, OpenSetRejection
 from ml.visual_embedding import VisualEmbeddingExtractor
+from backend.gemini import (
+    GeminiVisionClient,
+    GeminiVisionResult,
+)
 from backend.ollama import (
     OllamaVisionClient,
     OllamaVisionResult,
@@ -116,6 +121,7 @@ class HeritageService:
         top_k: int = DEFAULT_TOP_K,
         open_set: Optional[OpenSetRejection] = None,
         ollama_client: Optional[OllamaVisionClient] = None,
+        gemini_client: Optional[GeminiVisionClient] = None,
     ) -> None:
         self.confidence_layer = confidence_layer
         self.repository = repository
@@ -132,6 +138,13 @@ class HeritageService:
         # through as a confident local match.
         self.open_set = open_set or OpenSetRejection(top_k=top_k)
         self.ollama_client = ollama_client or OllamaVisionClient()
+        if gemini_client is not None:
+            self.gemini_client = gemini_client
+        elif ollama_client is not None:
+            # Caller explicitly injected an Ollama client (e.g., tests or rollback)
+            self.gemini_client = None
+        else:
+            self.gemini_client = GeminiVisionClient()
 
     # ── inputs ───────────────────────────────────────────────────────────────
 
@@ -296,7 +309,7 @@ class HeritageService:
 
         return result
 
-    # ── public async API (Ollama fallback) ───────────────────────────────────
+    # ── public async API (Gemini fallback) ───────────────────────────────────
 
     async def recognize_async(
         self,
@@ -305,7 +318,7 @@ class HeritageService:
         top_k: Optional[int] = None,
     ) -> RecognitionResult:
         """
-        Async wrapper around :meth:`recognize` that falls back to Ollama
+        Async wrapper around :meth:`recognize` that falls back to Google Gemini
         vision when open-set recognition rejects the local match.
         """
         result = self.recognize(query, question=question, top_k=top_k)
@@ -314,28 +327,26 @@ class HeritageService:
         if result.confident and result.confirmed:
             return result
 
-        # 2. Local match rejected: call Ollama vision fallback if image is available
-        if isinstance(query, (str, Path, bytes)) and self.ollama_client is not None:
+        # 2. Local match rejected: call Gemini vision fallback if image is available
+        if isinstance(query, (str, Path, bytes)) and self.gemini_client is not None:
             try:
-                ollama_res = await self.ollama_client.identify_monument(query, question=question)
-                # Only accept the global identification when Ollama reports a
+                gemini_res = await self.gemini_client.identify_monument(query)
+                # Only accept the global identification when Gemini reports a
                 # GENUINE heritage monument and not unknown.
-                if not ollama_res.unknown and ollama_res.identified and ollama_res.is_heritage:
+                if not gemini_res.unknown and gemini_res.identified and gemini_res.is_heritage:
                     # Model found a plausible identification:
-                    # Mark source as "ollama", keep separate from local FAISS matches,
+                    # Mark source as "gemini", keep separate from local FAISS matches,
                     # and do NOT mark as independently confirmed.
                     result.confident = True
-                    result.confirmed = False  # Requirement 7: do not mark as independently confirmed
+                    result.confirmed = False  # Model proposal: not independently verified against local catalogue
                     result.decision = "match"
-                    result.recognition_source = "ollama"
-                    result.site_id = "unknown"  # NEVER turn Ollama response into local site_id
-                    result.confidence = ollama_res.confidence  # Model-estimated confidence
+                    result.recognition_source = "gemini"
+                    result.site_id = "unknown"  # NEVER turn external response into local site_id
+                    result.confidence = gemini_res.confidence  # Model-estimated confidence
                     # result.similarity remains the local CLIP cosine score!
-                    result.global_identification = ollama_res.to_dict()
-                    result.reason = ollama_res.visual_evidence or ollama_res.reason
+                    result.global_identification = gemini_res.to_dict()
+                    result.reason = gemini_res.visual_evidence or gemini_res.reason
 
-                    # Requirement 9: Keep factual historical questions subject to evidence-grounding.
-                    # Visual identification is not historical evidence; do not fabricate citations.
                     result.citations = []
                     result.is_grounded = False
                     result.metadata = {}
@@ -345,8 +356,62 @@ class HeritageService:
                         "source_urls": [],
                         "relevant_claims": [],
                     }
+                    result.answer = None
+                else:
+                    # If Gemini cannot identify the image, or
+                    # identified place is non-heritage, return safe unknown result.
+                    result.confirmed = False
+                    result.confident = False
+                    result.site_id = "unknown"
+                    result.decision = "unknown"
+                    result.recognition_source = "unknown"
+                    result.global_identification = None
+                    result.confidence = None
+                    result.citations = []
+                    result.answer = None
+                    result.is_grounded = False
+                    result.reason = (
+                        REASON_NON_HERITAGE
+                        if gemini_res.explicit_non_heritage
+                        else REASON_LOW_SIMILARITY
+                    )
+            except Exception as exc:
+                # Failure, timeout, malformed data, or missing credentials
+                logger.warning("Gemini vision fallback failed: %s", type(exc).__name__)
+                result.confirmed = False
+                result.confident = False
+                result.site_id = "unknown"
+                result.decision = "unknown"
+                result.recognition_source = "unknown"
+                result.global_identification = None
+                result.confidence = None
+                result.citations = []
+                result.answer = None
+                result.is_grounded = False
+                result.reason = REASON_LOW_SIMILARITY
 
-                    # Optional Question handling:
+        elif isinstance(query, (str, Path, bytes)) and self.ollama_client is not None:
+            # Rollback fallback path when Gemini client is disabled or omitted
+            try:
+                ollama_res = await self.ollama_client.identify_monument(query, question=question)
+                if not ollama_res.unknown and ollama_res.identified and ollama_res.is_heritage:
+                    result.confident = True
+                    result.confirmed = False
+                    result.decision = "match"
+                    result.recognition_source = "ollama"
+                    result.site_id = "unknown"
+                    result.confidence = ollama_res.confidence
+                    result.global_identification = ollama_res.to_dict()
+                    result.reason = ollama_res.visual_evidence or ollama_res.reason
+                    result.citations = []
+                    result.is_grounded = False
+                    result.metadata = {}
+                    result.evidence = {
+                        "claims": [],
+                        "source_names": [],
+                        "source_urls": [],
+                        "relevant_claims": [],
+                    }
                     if question and question.strip():
                         if ollama_res.answer and ollama_res.answer.strip():
                             result.answer = ollama_res.answer.strip()
@@ -358,8 +423,6 @@ class HeritageService:
                     else:
                         result.answer = None
                 else:
-                    # Requirement 8: If Ollama cannot identify the image, or
-                    # identified place is non-heritage, return safe unknown result.
                     result.confirmed = False
                     result.confident = False
                     result.site_id = "unknown"
@@ -376,7 +439,6 @@ class HeritageService:
                         else REASON_LOW_SIMILARITY
                     )
             except Exception as exc:
-                # Requirement 8: Failure, timeout, malformed data, or missing credentials
                 logger.warning("Ollama vision fallback failed: %s", type(exc).__name__)
                 result.confirmed = False
                 result.confident = False
@@ -404,6 +466,7 @@ def build_service(
     extractor: Optional[VisualEmbeddingExtractor] = None,
     open_set: Optional[OpenSetRejection] = None,
     ollama_client: Optional[OllamaVisionClient] = None,
+    gemini_client: Optional[GeminiVisionClient] = None,
 ) -> HeritageService:
     """Build a ready-to-use service from the project's persisted artefacts."""
     layer = build_confidence_layer(
@@ -418,4 +481,5 @@ def build_service(
         top_k=top_k,
         open_set=open_set,
         ollama_client=ollama_client,
+        gemini_client=gemini_client,
     )

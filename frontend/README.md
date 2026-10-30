@@ -60,11 +60,11 @@ configured in `backend/api.py` for `localhost:8080`. If you serve this
 frontend on a port that is **not** listed there, the browser will block the
 request — use port 8080.
 
-The browser never talks to Ollama directly and no API key is ever present in
+The browser never talks to Google Gemini directly and no API key is ever present in
 this frontend. The full path stays:
 
 ```
-Browser → FastAPI → CLIP + FAISS → open-set decision → Ollama fallback → response → Browser
+Browser → FastAPI → CLIP + FAISS → open-set decision → Gemini fallback → response → Browser
 ```
 
 ---
@@ -138,7 +138,7 @@ enough to accept."*).
 | `recognition_source` | Shown as |
 | --- | --- |
 | `local` | **IDENTIFIED** + monument name, location, backend metadata, evidence claims, real citations, and the heritage gallery. |
-| `ollama` | **IDENTIFIED** with the banner *IDENTIFIED THROUGH GLOBAL VISION* + `global_identification` fields only. |
+| `gemini` | **IDENTIFIED** with the banner *AI Vision Identification — Google Gemini* + `global_identification` fields only. |
 | `unknown` | **IDENTIFICATION NOT CONFIRMED** + the reason. No monument, location, confidence or gallery is shown. |
 
 Any field the API does not return is **hidden**, never filled in with a
