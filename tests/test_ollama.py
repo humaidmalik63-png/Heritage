@@ -14,8 +14,10 @@ import httpx
 import pytest
 
 from backend.ollama import (
+    OLLAMA_VISION_PROMPT,
     OllamaVisionClient,
     OllamaVisionResult,
+    build_vision_prompt,
     encode_image_to_base64,
     fallback_unknown_result,
     identify_monument_global,
@@ -621,3 +623,87 @@ class TestOllamaVisionClient:
         assert resolve_chat_endpoint("https://ollama.com/api/") == "https://ollama.com/api/chat"
         assert resolve_chat_endpoint("http://localhost:11434") == "http://localhost:11434/api/chat"
         assert resolve_chat_endpoint("http://localhost:11434/api/chat") == "http://localhost:11434/api/chat"
+
+    def test_build_vision_prompt_without_question(self):
+        """Without a question, build_vision_prompt returns the default prompt."""
+        assert build_vision_prompt("") == OLLAMA_VISION_PROMPT
+        assert build_vision_prompt("   ") == OLLAMA_VISION_PROMPT
+
+    def test_build_vision_prompt_with_question(self):
+        """With a question, build_vision_prompt injects the question and answer schema."""
+        prompt = build_vision_prompt("When was this monument constructed?")
+        assert 'User question about this monument: "When was this monument constructed?"' in prompt
+        assert '"answer": string or null' in prompt
+
+    @pytest.mark.anyio
+    async def test_identify_monument_with_question_answers_and_separates(self):
+        """When question is supplied, answer is extracted and kept separate from to_dict()."""
+        expected_content = {
+            "identified": True,
+            "site_name": "Hawa Mahal",
+            "city": "Jaipur",
+            "country": "India",
+            "confidence": 0.95,
+            "reason": "Distinctive pink sandstone facade",
+            "uncertain": False,
+            "is_heritage": True,
+            "answer": "It was built in 1799 by Maharaja Sawai Pratap Singh.",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.read())
+            assert "When was it built?" in body["messages"][0]["content"]
+            return httpx.Response(
+                status_code=200,
+                json={"message": {"role": "assistant", "content": json.dumps(expected_content)}},
+            )
+
+        client = _make_client(handler)
+        result = await client.identify_monument(SAMPLE_IMAGE_BYTES, question="When was it built?")
+
+        assert result.identified is True
+        assert result.site_name == "Hawa Mahal"
+        assert result.answer == "It was built in 1799 by Maharaja Sawai Pratap Singh."
+
+        # Verify answer is kept separate from to_dict() (which feeds global_identification)
+        d = result.to_dict()
+        assert "answer" not in d
+
+    @pytest.mark.anyio
+    async def test_identify_monument_empty_question_has_no_answer(self):
+        """When question is empty, answer field is None."""
+        expected_content = {
+            "identified": True,
+            "site_name": "Hawa Mahal",
+            "city": "Jaipur",
+            "country": "India",
+            "confidence": 0.95,
+            "reason": "Distinctive pink sandstone facade",
+            "uncertain": False,
+            "is_heritage": True,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.read())
+            assert body["messages"][0]["content"] == OLLAMA_VISION_PROMPT
+            return httpx.Response(
+                status_code=200,
+                json={"message": {"role": "assistant", "content": json.dumps(expected_content)}},
+            )
+
+        client = _make_client(handler)
+        result = await client.identify_monument(SAMPLE_IMAGE_BYTES, question="")
+
+        assert result.identified is True
+        assert result.answer is None
+
+    def test_reconcile_fields_answer_cleaning(self):
+        """OllamaVisionResult reconciles answer whitespace and null values."""
+        res1 = OllamaVisionResult.model_validate({"answer": "  Valid answer  "})
+        assert res1.answer == "Valid answer"
+
+        res2 = OllamaVisionResult.model_validate({"answer": "   "})
+        assert res2.answer is None
+
+        res3 = OllamaVisionResult.model_validate({"answer": None})
+        assert res3.answer is None

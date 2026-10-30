@@ -2036,6 +2036,14 @@
       if (gFacts.children.length) body.appendChild(section('Additional information', gFacts));
     }
 
+    /* Answer to optional question, clearly distinguishing Ollama visual answers from grounded answers */
+    if (data.answer) {
+      var ansWrap = el('div', 'result__stack');
+      ansWrap.appendChild(el('p', 'result__text', data.answer));
+      ansWrap.appendChild(el('p', 'source__note', 'AI-generated response based on visual identification — not independently verified against catalogue evidence.'));
+      body.appendChild(section('AI Vision Answer', ansWrap));
+    }
+
     /* Sources: the backend deliberately returns a label with no URL here. */
     var srcWrap = el('div', 'sources');
     var hasRealSource = false;

@@ -317,7 +317,7 @@ class HeritageService:
         # 2. Local match rejected: call Ollama vision fallback if image is available
         if isinstance(query, (str, Path, bytes)) and self.ollama_client is not None:
             try:
-                ollama_res = await self.ollama_client.identify_monument(query)
+                ollama_res = await self.ollama_client.identify_monument(query, question=question)
                 # Only accept the global identification when Ollama reports a
                 # GENUINE heritage monument and not unknown.
                 if not ollama_res.unknown and ollama_res.identified and ollama_res.is_heritage:
@@ -337,7 +337,6 @@ class HeritageService:
                     # Requirement 9: Keep factual historical questions subject to evidence-grounding.
                     # Visual identification is not historical evidence; do not fabricate citations.
                     result.citations = []
-                    result.answer = None
                     result.is_grounded = False
                     result.metadata = {}
                     result.evidence = {
@@ -346,6 +345,18 @@ class HeritageService:
                         "source_urls": [],
                         "relevant_claims": [],
                     }
+
+                    # Optional Question handling:
+                    if question and question.strip():
+                        if ollama_res.answer and ollama_res.answer.strip():
+                            result.answer = ollama_res.answer.strip()
+                        else:
+                            result.answer = (
+                                "This question could not be answered from the visual information "
+                                "available for this monument."
+                            )
+                    else:
+                        result.answer = None
                 else:
                     # Requirement 8: If Ollama cannot identify the image, or
                     # identified place is non-heritage, return safe unknown result.

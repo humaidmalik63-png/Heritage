@@ -116,6 +116,84 @@ Rules:
 7. Output raw JSON only. Do not include markdown code blocks or extra text."""
 
 
+def build_vision_prompt(question: str = "") -> str:
+    """
+    Build Ollama vision prompt, including user question schema and instructions if provided.
+    """
+    cleaned_q = question.strip() if question else ""
+    if not cleaned_q:
+        return OLLAMA_VISION_PROMPT
+
+    return f"""Analyze this image and determine whether it depicts a GENUINE heritage site, historic monument, ancient temple, fort, palace, archaeological site, sacred site, or UNESCO World Heritage site.
+
+You must respond with valid JSON strictly matching this schema:
+{{
+  "unknown": boolean,
+  "site_name": string or null,
+  "country_or_region": string or null,
+  "city": string or null,
+  "country": string or null,
+  "visual_evidence": string,
+  "confidence": number between 0.0 and 1.0,
+  "uncertainty": string or null,
+  "alternatives": [string, ...],
+  "limitations": string or null,
+  "is_heritage": boolean,
+  "historical_period": string or null,
+  "founder_built_by": string or null,
+  "architectural_style": string or null,
+  "significance": string or null,
+  "interesting_facts": [string, ...],
+  "answer": string or null
+}}
+
+Rules:
+1. Only set "unknown": false when the image depicts a GENUINE heritage monument or site (historic monument, ancient temple, fort, palace, archaeological site, UNESCO site, sacred site, or historic religious building):
+   - "unknown": false
+   - "is_heritage": true
+   - "site_name": the exact common name of the monument (e.g. "Hawa Mahal", "Colosseum", "Angkor Wat", "Abu Simbel Temples")
+   - "country_or_region": country or region where it is located (e.g. "Egypt", "Rajasthan, India")
+   - "city": city or region where it is located (or null)
+   - "country": country where it is located (or null)
+   - "visual_evidence": 1-3 sentences describing the key visible architectural details, carvings, materials, or distinctive structures identifying it
+   - "confidence": estimated confidence score between 0.0 and 1.0 (treated as an estimate, not a certainty)
+   - "uncertainty": null if certain, or a brief note explaining any uncertainty
+   - "alternatives": list of other plausible candidate sites if not 100% certain, or []
+   - "limitations": any limitations of the visual analysis (e.g. "Partial view", "Low resolution", "Obscured by crowd/trees") or null
+   - "historical_period": approximate construction period or dynasty (e.g. "Mughal Empire (17th century)"). Omit if unreliable.
+   - "founder_built_by": the ruler, patron, or culture that built it (e.g. "Shah Jahan", "Eastern Ganga Dynasty"). Omit if unreliable.
+   - "architectural_style": the recognized architectural tradition (e.g. "Mughal architecture", "Nagara-style temple"). Omit if unreliable.
+   - "significance": 1-2 sentences on why the site matters historically, culturally, or architecturally.
+   - "interesting_facts": 3–5 short factual highlights about the monument. Keep them verifiable; do NOT invent claims.
+2. If the image depicts a NON-HERITAGE landmark, place, or ordinary scene, set "unknown": true and "is_heritage": false. This includes, but is not limited to:
+   - modern commercial buildings, skyscrapers, office towers, shopping malls
+   - public squares, plazas, streetscapes, bridges, train stations, airports
+   - statues, fountains, obelisks, memorials that are not heritage monuments
+   - observation towers, Ferris wheels, modern amusement or sports structures
+   - natural scenery: beaches, mountains, forests, parks, lakes, waterfalls
+   - ordinary cityscapes, roads, vehicles, boats, airplanes, interiors, people
+   - any famous place that is primarily a modern commercial, transport, or recreational landmark rather than a historic heritage site
+   - "site_name": null, "country_or_region": null, "city": null, "country": null, "confidence": 0.0
+   - "visual_evidence": briefly describe what was observed and why it is NOT a heritage site
+   - "alternatives": []
+   - "limitations": null
+   - Leave all other profile fields null/empty, and set "answer": null.
+3. If you cannot identify the structure or place at all (unknown building, blurry image, unrelated scene):
+   - "unknown": true, "is_heritage": false, "site_name": null, "country_or_region": null, "city": null, "country": null, "confidence": 0.0
+   - "visual_evidence": brief explanation why it could not be identified
+   - "alternatives": []
+   - "limitations": describe visual limitations that hindered recognition
+   - Leave all other profile fields null/empty, and set "answer": null.
+4. NEVER set "unknown": false for a non-heritage landmark. A non-heritage landmark is NOT a confirmed heritage site, even if it is famous.
+5. Do NOT guess or fabricate a monument name, dates, or historical claims. When you cannot verify a field, return it as null (not an empty string, not a guess).
+6. For "interesting_facts", include only well-established facts that are traceable to public heritage documentation (UNESCO, national archaeological surveys, academic sources). If you are unsure about a fact, omit it.
+7. User question about this monument: "{cleaned_q}"
+   - If "is_heritage" is true and you can answer the question based on the identified monument and visible details in the image, provide a direct 1-3 sentence factual answer in "answer".
+   - If you cannot answer the question from reliable knowledge about this monument, set "answer": "This question could not be answered from the visual information available for this monument."
+   - If "is_heritage" is false or "unknown" is true, set "answer": null.
+8. Output raw JSON only. Do not include markdown code blocks or extra text."""
+
+
 class OllamaVisionResult(BaseModel):
     """Structured response from Ollama vision identification."""
 
@@ -210,6 +288,10 @@ class OllamaVisionResult(BaseModel):
         default_factory=list,
         description="3-5 well-established factual highlights traceable to public sources.",
     )
+    answer: Optional[str] = Field(
+        default=None,
+        description="Answer to the user's question about the monument if provided.",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -279,6 +361,14 @@ class OllamaVisionResult(BaseModel):
             d["limitations"] = "; ".join(str(x) for x in lim if x)
         elif lim is not None and not isinstance(lim, str):
             d["limitations"] = str(lim)
+
+        # 6. answer
+        ans = d.get("answer")
+        if isinstance(ans, str):
+            ans_clean = ans.strip()
+            d["answer"] = ans_clean if ans_clean else None
+        elif ans is not None:
+            d["answer"] = str(ans).strip() or None
 
         return d
 
@@ -548,11 +638,13 @@ class OllamaVisionClient:
             architectural_style=result.architectural_style or None,
             significance=result.significance or None,
             interesting_facts=list(result.interesting_facts or []),
+            answer=result.answer or None,
         )
 
     async def identify_monument(
         self,
         image: Union[bytes, str, Path],
+        question: str = "",
     ) -> OllamaVisionResult:
         """
         Identify a monument globally using Ollama vision.
@@ -561,6 +653,8 @@ class OllamaVisionClient:
         ----------
         image : bytes | str | Path
             Raw image bytes, image filepath, or base64 data string.
+        question : str, optional
+            Optional question about the monument to be answered by the vision model.
 
         Returns
         -------
@@ -579,12 +673,13 @@ class OllamaVisionClient:
             logger.warning("Failed to encode image for Ollama vision: %s", exc)
             return fallback_unknown_result(reason="Failed to encode query image")
 
+        prompt = build_vision_prompt(question)
         payload = {
             "model": self.model,
             "messages": [
                 {
                     "role": "user",
-                    "content": OLLAMA_VISION_PROMPT,
+                    "content": prompt,
                     "images": [b64_image],
                 }
             ],
@@ -645,8 +740,9 @@ class OllamaVisionClient:
 
 async def identify_monument_global(
     image: Union[bytes, str, Path],
+    question: str = "",
     client: Optional[OllamaVisionClient] = None,
 ) -> OllamaVisionResult:
     """Convenience helper to identify a monument with a default or custom client."""
     active_client = client if client is not None else OllamaVisionClient()
-    return await active_client.identify_monument(image)
+    return await active_client.identify_monument(image, question=question)

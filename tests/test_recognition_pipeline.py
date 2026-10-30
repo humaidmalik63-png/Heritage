@@ -421,8 +421,57 @@ class TestRecognitionPipelineOllamaIntegration:
         assert result.global_identification is None
 
     @pytest.mark.anyio
-    async def test_factual_historical_question_grounding_preservation(self, repo, tmp_path):
-        """Requirement 9: Questions asked during Ollama fallback remain subject to evidence grounding."""
+    async def test_ollama_fallback_with_question_answered(self, repo, tmp_path):
+        """When Ollama identifies monument and answers question, answer is returned ungrounded without citations."""
+        ollama_prompt_received = ""
+        expected_ollama = {
+            "unknown": False,
+            "site_name": "Abu Simbel Temples",
+            "country_or_region": "Egypt",
+            "visual_evidence": "Colossal rock statues",
+            "confidence": 0.90,
+            "is_heritage": True,
+            "answer": "The temples were commissioned by Pharaoh Ramesses II in the 13th century BC.",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal ollama_prompt_received
+            body = json.loads(request.read())
+            ollama_prompt_received = body["messages"][0]["content"]
+            return httpx.Response(
+                status_code=200,
+                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
+            )
+
+        img_path = tmp_path / "abu_simbel.jpg"
+        img_path.write_bytes(b"abu simbel photo bytes")
+
+        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
+        svc = _service_with_mock_ollama(repo, noise_vec, handler)
+        result = await svc.recognize_async(img_path, question="Who commissioned this monument?")
+
+        # Question was passed to prompt
+        assert "Who commissioned this monument?" in ollama_prompt_received
+
+        # Recognition source and status
+        assert result.recognition_source == "ollama"
+        assert result.confirmed is False  # Never presented as independently verified
+        assert result.confident is True
+        assert result.decision == "match"
+
+        # Answer is present, ungrounded, no citations
+        assert result.answer == "The temples were commissioned by Pharaoh Ramesses II in the 13th century BC."
+        assert result.citations == []
+        assert result.is_grounded is False
+
+        # Global identification contains site info and separates answer
+        assert result.global_identification is not None
+        assert result.global_identification["site_name"] == "Abu Simbel Temples"
+        assert "answer" not in result.global_identification
+
+    @pytest.mark.anyio
+    async def test_ollama_fallback_without_question(self, repo, tmp_path):
+        """When question is empty, Ollama fallback identifies monument and answer is None."""
         expected_ollama = {
             "unknown": False,
             "site_name": "Abu Simbel Temples",
@@ -443,11 +492,100 @@ class TestRecognitionPipelineOllamaIntegration:
 
         noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
         svc = _service_with_mock_ollama(repo, noise_vec, handler)
-        result = await svc.recognize_async(img_path, question="Who commissioned this monument?")
+        result = await svc.recognize_async(img_path, question="")
 
         assert result.recognition_source == "ollama"
         assert result.confirmed is False
         assert result.confident is True
+        assert result.answer is None
+        assert result.citations == []
+        assert result.is_grounded is False
+
+    @pytest.mark.anyio
+    async def test_ollama_fallback_question_unanswerable(self, repo, tmp_path):
+        """When question cannot be answered by Ollama, identification is preserved and fallback message is returned."""
+        expected_ollama = {
+            "unknown": False,
+            "site_name": "Abu Simbel Temples",
+            "country_or_region": "Egypt",
+            "visual_evidence": "Colossal rock statues",
+            "confidence": 0.90,
+            "is_heritage": True,
+            "answer": None,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                status_code=200,
+                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
+            )
+
+        img_path = tmp_path / "abu_simbel.jpg"
+        img_path.write_bytes(b"abu simbel photo bytes")
+
+        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
+        svc = _service_with_mock_ollama(repo, noise_vec, handler)
+        result = await svc.recognize_async(img_path, question="What is inside the closed inner chamber?")
+
+        assert result.recognition_source == "ollama"
+        assert result.confirmed is False
+        assert result.confident is True
+        assert result.global_identification["site_name"] == "Abu Simbel Temples"
+        assert (
+            result.answer
+            == "This question could not be answered from the visual information available for this monument."
+        )
+        assert result.citations == []
+        assert result.is_grounded is False
+
+    @pytest.mark.anyio
+    async def test_ollama_fallback_unknown_image_with_question(self, repo, tmp_path):
+        """When image is unknown, answer is None even if a question was asked."""
+        expected_ollama = {
+            "unknown": True,
+            "site_name": None,
+            "visual_evidence": "Blurry image of an office tower",
+            "confidence": 0.0,
+            "is_heritage": False,
+            "answer": None,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                status_code=200,
+                json={"message": {"role": "assistant", "content": json.dumps(expected_ollama)}},
+            )
+
+        img_path = tmp_path / "office.jpg"
+        img_path.write_bytes(b"office bytes")
+
+        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
+        svc = _service_with_mock_ollama(repo, noise_vec, handler)
+        result = await svc.recognize_async(img_path, question="When was this built?")
+
+        assert result.recognition_source == "unknown"
+        assert result.confirmed is False
+        assert result.confident is False
+        assert result.answer is None
+        assert result.citations == []
+        assert result.is_grounded is False
+
+    @pytest.mark.anyio
+    async def test_ollama_fallback_error_with_question(self, repo, tmp_path):
+        """When Ollama request times out or errors, safe unknown is returned with answer None."""
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.TimeoutException("Ollama timed out")
+
+        img_path = tmp_path / "timeout.jpg"
+        img_path.write_bytes(b"image bytes")
+
+        noise_vec = _unit([0.0, 0.0, 1.0, 0.0])
+        svc = _service_with_mock_ollama(repo, noise_vec, handler)
+        result = await svc.recognize_async(img_path, question="Who built it?")
+
+        assert result.recognition_source == "unknown"
+        assert result.confirmed is False
+        assert result.confident is False
         assert result.answer is None
         assert result.citations == []
         assert result.is_grounded is False
