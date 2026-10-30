@@ -3,18 +3,49 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Heritage Discovery — Recognise the Stories of Place</title>
-<meta name="description" content="Identify monuments from photographs using visual AI, explore their history, and discover the architectural stories behind remarkable places." />
+<title>Heritage Discovery — Visual Heritage Recognition Platform</title>
+<meta name="description" content="Automated monument recognition using visual feature embeddings (CLIP ViT-B/32), vector similarity retrieval (FAISS), open-set decision boundaries, and grounded UNESCO architectural evidence." />
 <meta name="color-scheme" content="dark" />
+<link rel="canonical" href="./" />
+
+<!-- Open Graph / Social Media -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Heritage Discovery — Visual Heritage Recognition Platform" />
+<meta property="og:description" content="Automated monument recognition using visual feature embeddings (CLIP ViT-B/32), vector similarity retrieval (FAISS), open-set decision boundaries, and grounded UNESCO architectural evidence." />
+<meta property="og:image" content="assets/images/slideshow/great-wall.webp" />
+<meta property="og:site_name" content="Heritage Discovery" />
+
+<!-- Twitter / X Cards -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Heritage Discovery — Visual Heritage Recognition Platform" />
+<meta name="twitter:description" content="Automated monument recognition using visual feature embeddings (CLIP ViT-B/32), vector similarity retrieval (FAISS), open-set decision boundaries, and grounded UNESCO architectural evidence." />
+<meta name="twitter:image" content="assets/images/slideshow/great-wall.webp" />
+
+<!-- Icons and Manifest -->
+<link rel="manifest" href="site.webmanifest" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="apple-touch-icon" href="favicon.svg" />
+
 <link rel="preload" as="image" href="assets/images/slideshow/great-wall-sm.webp" media="(max-width: 768px), (orientation: portrait)" fetchpriority="high" type="image/webp" />
 <link rel="preload" as="image" href="assets/images/slideshow/great-wall.webp" media="(min-width: 769px) and (orientation: landscape)" fetchpriority="high" type="image/webp" />
 <link rel="stylesheet" href="styles.css" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305070C'/%3E%3Cpath d='M8 24V13l8-6 8 6v11h-5v-7h-6v7z' fill='%23E8D1CB'/%3E%3C/svg%3E" />
 </head>
 <body>
 
 <!-- ══ cinematic loading overlay ═══════════════════════════════════════════ -->
 <div id="loader-overlay" class="loader-overlay" aria-hidden="true" aria-label="Loading Visual Heritage">
+  <!-- architectural drafting grid background -->
+  <div class="loader-grid" aria-hidden="true">
+    <div class="loader-grid__lines"></div>
+    <div class="loader-grid__axes"></div>
+    <div class="loader-grid__marks">
+      <span class="loader-grid__mark loader-grid__mark--tl">+</span>
+      <span class="loader-grid__mark loader-grid__mark--tr">+</span>
+      <span class="loader-grid__mark loader-grid__mark--bl">+</span>
+      <span class="loader-grid__mark loader-grid__mark--br">+</span>
+    </div>
+  </div>
+
   <div class="loader-bg">
     <div class="loader-bg__image"></div>
     <div class="loader-bg__vignette"></div>
@@ -22,26 +53,63 @@
   </div>
 
   <div class="loader-content">
-    <div class="loader-emblem">
-      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.2">
-        <path class="loader-emblem__path" d="M12 52V28l20-16 20 16v24h-12V36H24v16z" stroke-linecap="square" />
-        <circle class="loader-emblem__dot" cx="32" cy="24" r="3" fill="currentColor" />
+    <!-- animated architectural elevation drawing -->
+    <div class="loader-blueprint" aria-hidden="true">
+      <svg class="loader-blueprint__svg" viewBox="0 0 160 120" width="160" height="120" fill="none" stroke="currentColor">
+        <!-- construction guidelines -->
+        <line class="loader-line loader-line--guide" x1="12" y1="98" x2="148" y2="98" stroke-dasharray="2 3" stroke-width="0.8" />
+        <line class="loader-line loader-line--guide" x1="80" y1="8" x2="80" y2="108" stroke-dasharray="2 3" stroke-width="0.8" />
+        <circle class="loader-line loader-line--guide" cx="80" cy="54" r="32" stroke-dasharray="2 4" stroke-width="0.8" />
+        
+        <!-- stepped foundation plinth -->
+        <rect class="loader-line loader-line--main" x="24" y="94" width="112" height="6" stroke-width="1.2" />
+        <rect class="loader-line loader-line--main" x="32" y="88" width="96" height="6" stroke-width="1.2" />
+        
+        <!-- main facade & colonnade -->
+        <path class="loader-line loader-line--main" d="M38 88V46h84v42" stroke-width="1.3" />
+        <!-- architectural columns -->
+        <line class="loader-line loader-line--col" x1="48" y1="88" x2="48" y2="46" stroke-width="1" />
+        <line class="loader-line loader-line--col" x1="60" y1="88" x2="60" y2="46" stroke-width="1" />
+        <line class="loader-line loader-line--col" x1="100" y1="88" x2="100" y2="46" stroke-width="1" />
+        <line class="loader-line loader-line--col" x1="112" y1="88" x2="112" y2="46" stroke-width="1" />
+        
+        <!-- grand central monumental arch -->
+        <path class="loader-line loader-line--arch" d="M68 88V62c0-6.6 5.4-12 12-12s12 5.4 12 12v26" stroke-width="1.4" />
+        <path class="loader-line loader-line--arch-inner" d="M72 88V64c0-4.4 3.6-8 8-8s8 3.6 8 8v24" stroke-width="0.9" />
+        
+        <!-- entablature & pediment/dome -->
+        <path class="loader-line loader-line--entablature" d="M34 46h92v-5H34v5z" stroke-width="1.2" />
+        <path class="loader-line loader-line--dome" d="M54 41c4-18 26-27 26-27s22 9 26 27" stroke-width="1.3" />
+        <!-- finial spire -->
+        <line class="loader-line loader-line--spire" x1="80" y1="14" x2="80" y2="5" stroke-width="1.5" />
+        <circle class="loader-line loader-line--dot" cx="80" cy="4" r="1.8" fill="currentColor" />
+        
+        <!-- side minarets/pinnacles -->
+        <path class="loader-line loader-line--pin" d="M35 41V28l3-5 3 5v13" stroke-width="1" />
+        <path class="loader-line loader-line--pin" d="M119 41V28l3-5 3 5v13" stroke-width="1" />
       </svg>
     </div>
 
+    <!-- title with refined letter-reveal -->
     <div class="loader-brand">
+      <div class="loader-kicker">Visual Heritage Platform</div>
       <h1 class="loader-title">
-        <span class="loader-title__line"><span class="loader-title__in">VISUAL</span></span>
-        <span class="loader-title__line"><span class="loader-title__in">HERITAGE</span></span>
+        <span class="loader-title__word"><span class="loader-title__in">HERITAGE</span></span>
+        <span class="loader-title__word loader-title__word--gold"><span class="loader-title__in">DISCOVERY</span></span>
       </h1>
-      <p class="loader-tagline">Discover the Stories Written in Time</p>
+      <p class="loader-tagline">Grounded Cultural Discovery &amp; Vector Retrieval</p>
     </div>
 
+    <!-- thin animated horizontal loading line -->
     <div class="loader-progress">
       <div class="loader-progress__track">
         <div class="loader-progress__bar" id="loader-bar"></div>
+        <div class="loader-progress__glow"></div>
       </div>
-      <p class="loader-message" id="loader-message">Awakening the archives</p>
+      <div class="loader-status-row">
+        <span class="loader-indicator-dot"></span>
+        <p class="loader-message" id="loader-message">Initializing vector index &amp; evidence repository</p>
+      </div>
     </div>
   </div>
 
@@ -100,6 +168,9 @@
       <span class="menu-toggle__label">Menu</span>
     </button>
   </div>
+  <div class="scroll-progress" id="scroll-progress" aria-hidden="true">
+    <div class="scroll-progress__bar" id="scroll-progress-bar"></div>
+  </div>
 </header>
 
 <!-- ══ mobile glass menu ══════════════════════════════════════════════════ -->
@@ -146,16 +217,16 @@
     <div class="hero__inner">
       <p class="eyebrow hero__eyebrow story-reveal story-delay-1" id="home-eyebrow"><span class="eyebrow__tick" aria-hidden="true"></span><span class="eyebrow__chapter" id="hero-eyebrow-chapter">Chapter 01 — Discover</span><span class="eyebrow__sep" aria-hidden="true"> · </span><span class="eyebrow__monument" id="hero-eyebrow-monument">Great Wall of China</span></p>
       <h1 class="hero__title story-reveal story-delay-2">
-        <span class="line"><span class="line__in">Recognise the</span></span>
-        <span class="line"><span class="line__in">stories of place</span></span>
+        <span class="line"><span class="line__in">Visual Heritage</span></span>
+        <span class="line"><span class="line__in">Recognition Platform</span></span>
       </h1>
       <p class="hero__desc story-reveal story-delay-3">
-        Identify monuments from photographs using visual AI, explore their history,
-        and discover the architectural stories behind remarkable places.
+        Automated monument recognition using visual feature embeddings (CLIP ViT-B/32),
+        sub-millisecond similarity retrieval (FAISS), open-set decision boundaries, and grounded UNESCO architectural evidence.
       </p>
       <div class="hero__cta story-reveal story-delay-4">
-        <button type="button" class="btn btn--primary" data-nav="recognition">Identify Heritage</button>
-        <button type="button" class="btn btn--ghost" data-nav="heritage">Explore Heritage</button>
+        <button type="button" class="btn btn--primary" data-nav="recognition">Analyze Photograph</button>
+        <button type="button" class="btn btn--ghost" data-nav="heritage">Browse Catalogue</button>
       </div>
     </div>
 
@@ -205,18 +276,30 @@
 <!-- ══════════════════════════ RECOGNITION ══════════════════════════════ -->
 <section class="view view--recognition landing-section" id="view-recognition" data-view="recognition" aria-labelledby="rec-title">
   <div class="shell">
+    <div class="arch-divider story-reveal" aria-hidden="true">
+      <span class="arch-divider__line arch-divider__line--left"></span>
+      <div class="arch-divider__label">
+        <span class="arch-divider__mark">SEC · 02</span>
+        <span class="arch-divider__plus">+</span>
+        <span class="arch-divider__title">IMAGE ANALYSIS</span>
+      </div>
+      <span class="arch-divider__line arch-divider__line--right"></span>
+    </div>
+
     <header class="page-head">
-      <p class="eyebrow story-reveal story-delay-1"><span class="eyebrow__tick" aria-hidden="true"></span>Chapter 02 — Recognition</p>
-      <h2 class="page-head__title story-reveal story-delay-2" id="rec-title">Upload Image</h2>
+      <p class="eyebrow story-reveal story-delay-1"><span class="eyebrow__tick" aria-hidden="true"></span>Chapter 02 — Image Analysis &amp; Identification</p>
+      <h2 class="page-head__title story-reveal story-delay-2" id="rec-title">Heritage Identification</h2>
       <p class="page-head__desc story-reveal story-delay-3">
-        Provide a photograph of a monument. The image is analysed by the local
-        CLIP and FAISS index, gated by an open-set decision, and — only when that
-        gate rejects the match — passed to the global vision fallback.
+        Submit a photograph of a monument. The visual embedding is extracted via CLIP ViT-B/32 and evaluated against the indexed FAISS vector database. Candidate matches are verified against calibrated open-set decision boundaries (similarity ≥ 0.85, competitor margin ≥ 0.10) with an external identification fallback for uncatalogued monuments.
       </p>
     </header>
 
     <!-- upload -->
-    <div class="upload story-reveal story-delay-4" id="upload-zone">
+    <div class="upload story-reveal story-delay-4 arch-frame" id="upload-zone">
+      <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+      <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+      <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+      <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
       <input type="file" id="file-input" class="visually-hidden"
              accept="image/jpeg,image/jpg,image/png,image/webp" />
       <div class="upload__idle" id="upload-idle">
@@ -249,23 +332,16 @@
 
     <p class="notice notice--error" id="upload-error" role="alert" hidden></p>
 
-    <!-- optional question -->
-    <div class="field story-reveal story-delay-4">
-      <label class="field__label" for="question">Optional question about the site</label>
-      <input class="field__input" type="text" id="question" maxlength="240"
-             placeholder="e.g. When was it built?" autocomplete="off" />
-    </div>
-
     <div class="recognition-actions story-reveal story-delay-4">
-      <button type="button" class="btn btn--primary" id="recognize-btn" disabled>Run Recognition</button>
+      <button type="button" class="btn btn--primary" id="recognize-btn" disabled>Execute Recognition</button>
       <span class="recognition-actions__status" id="rec-status" role="status" aria-live="polite"></span>
     </div>
 
     <!-- four-stage pipeline -->
     <ol class="pipeline story-reveal story-delay-5" id="pipeline" aria-label="Recognition pipeline">
-      <li class="pipeline__stage" data-stage="image"><span class="pipeline__num">01</span><span class="pipeline__name">Image</span></li>
-      <li class="pipeline__stage" data-stage="analysis"><span class="pipeline__num">02</span><span class="pipeline__name">AI Analysis</span></li>
-      <li class="pipeline__stage" data-stage="match"><span class="pipeline__num">03</span><span class="pipeline__name">Heritage Match</span></li>
+      <li class="pipeline__stage" data-stage="image"><span class="pipeline__num">01</span><span class="pipeline__name">Image Input</span></li>
+      <li class="pipeline__stage" data-stage="analysis"><span class="pipeline__num">02</span><span class="pipeline__name">Image Analysis</span></li>
+      <li class="pipeline__stage" data-stage="match"><span class="pipeline__num">03</span><span class="pipeline__name">Heritage Identification</span></li>
       <li class="pipeline__stage" data-stage="evidence"><span class="pipeline__num">04</span><span class="pipeline__name">Evidence</span></li>
     </ol>
 
@@ -277,6 +353,16 @@
 <!-- ══════════════════════════ HERITAGE EXPLORER ═════════════════════════ -->
 <section class="view view--heritage landing-section" id="view-heritage" data-view="heritage" aria-labelledby="her-title">
   <div class="shell">
+    <div class="arch-divider story-reveal" aria-hidden="true">
+      <span class="arch-divider__line arch-divider__line--left"></span>
+      <div class="arch-divider__label">
+        <span class="arch-divider__mark">SEC · 03</span>
+        <span class="arch-divider__plus">+</span>
+        <span class="arch-divider__title">HERITAGE EXPLORER</span>
+      </div>
+      <span class="arch-divider__line arch-divider__line--right"></span>
+    </div>
+
     <header class="page-head page-head--split">
       <div>
         <p class="eyebrow story-reveal story-delay-1"><span class="eyebrow__tick" aria-hidden="true"></span>Chapter 05 — Explore</p>
@@ -289,7 +375,11 @@
       <p class="page-head__count story-reveal story-delay-3" id="her-count">Loading catalogue…</p>
     </header>
 
-    <div class="filters story-reveal story-delay-4" role="search">
+    <div class="filters story-reveal story-delay-4 arch-frame" role="search">
+      <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+      <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+      <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+      <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
       <div class="field field--grow">
         <label class="field__label" for="search">Search</label>
         <input class="field__input" type="search" id="search" autocomplete="off"
@@ -329,6 +419,16 @@
 <!-- ══════════════════════════ ABOUT ════════════════════════════════════ -->
 <section class="view view--about landing-section" id="view-about" data-view="about" aria-labelledby="about-title">
   <div class="shell">
+    <div class="arch-divider story-reveal" aria-hidden="true">
+      <span class="arch-divider__line arch-divider__line--left"></span>
+      <div class="arch-divider__label">
+        <span class="arch-divider__mark">SEC · 04</span>
+        <span class="arch-divider__plus">+</span>
+        <span class="arch-divider__title">METHODOLOGY &amp; EVIDENCE</span>
+      </div>
+      <span class="arch-divider__line arch-divider__line--right"></span>
+    </div>
+
     <header class="page-head">
       <p class="eyebrow story-reveal story-delay-1"><span class="eyebrow__tick" aria-hidden="true"></span>Chapter 06 — Evidence</p>
       <h2 class="page-head__title story-reveal story-delay-2" id="about-title">About the System</h2>
@@ -348,34 +448,48 @@
         <span class="arch__name">Result</span>
         <span class="arch__branches">
           <span class="arch__branch">Local Result</span>
-          <span class="arch__branch">Global Vision</span>
+          <span class="arch__branch">External Recognition</span>
         </span>
       </li>
       <li class="arch__node story-reveal"><span class="arch__cap">06</span><span class="arch__name">Heritage Information</span><span class="arch__note">Grounded, cited</span></li>
     </ol>
 
     <div class="about-grid">
-      <section class="panel story-reveal story-delay-1">
-        <h3 class="panel__title">What the numbers mean</h3>
+      <section class="panel story-reveal story-delay-1 arch-frame">
+        <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
+        <h3 class="panel__title">Recognition Metrics &amp; Methodology</h3>
         <dl class="deflist">
-          <dt>Similarity</dt>
-          <dd>The local CLIP cosine of the nearest indexed image. Meaningless on its own once the open-set gate has run.</dd>
-          <dt>Confidence</dt>
-          <dd>The confidence of whichever model made the decision — the local catalogue for a match, the vision model for a global identification.</dd>
-          <dt>Open-set gate</dt>
-          <dd>A match is only accepted when the top hit is separated from the field by a calibrated margin. Otherwise the system declines rather than guessing.</dd>
+          <dt>CLIP Similarity</dt>
+          <dd>Cosine similarity (inner product) in 512-dimensional CLIP embedding space between the query and the nearest indexed catalogue photograph.</dd>
+          <dt>Competitor Margin</dt>
+          <dd>The similarity separation (calibrated threshold: Δ ≥ 0.10) between the top candidate site and the nearest competing monument class.</dd>
+          <dt>Open-Set Gate</dt>
+          <dd>A candidate match is accepted only when similarity meets the threshold (≥ 0.85) and the competitor margin exceeds 0.10, preventing false acceptance of uncatalogued sites.</dd>
+          <dt>External Identification</dt>
+          <dd>Secondary multimodal vision identification invoked strictly when local recognition rejects an uncatalogued or out-of-distribution image.</dd>
         </dl>
       </section>
-      <section class="panel story-reveal story-delay-2">
+      <section class="panel story-reveal story-delay-2 arch-frame">
+        <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
         <h3 class="panel__title">Grounding</h3>
         <p class="panel__body">
           Local results carry the catalogue metadata and the evidence records held with them,
-          each with its named source and URL. A global vision identification is the vision
-          model's own assessment — it is labelled as such and is never presented with an
-          external citation it does not have.
+          each with its named source and URL. An external identification is the model's
+          own visual assessment — it is labelled as such and is never presented with an
+          independent catalogue citation it does not possess.
         </p>
       </section>
-      <section class="panel story-reveal story-delay-3">
+      <section class="panel story-reveal story-delay-3 arch-frame">
+        <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+        <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
         <h3 class="panel__title">Live system</h3>
         <dl class="deflist" id="about-health">
           <dt>Status</dt><dd data-health="status">—</dd>
@@ -393,10 +507,98 @@
 
 <footer class="footer">
   <div class="footer__inner">
-    <span class="footer__brand">Heritage Discovery</span>
-    <span class="footer__note">Visual recognition · similarity search · open-set decision · grounded heritage data</span>
+    <div class="footer__col">
+      <span class="footer__brand">Heritage Discovery</span>
+      <span class="footer__note">Visual recognition · similarity search · open-set decision · grounded heritage data</span>
+    </div>
+    <div class="footer__legal">
+      <button type="button" class="footer__link" id="footer-privacy-btn">Privacy Policy</button>
+      <span class="footer__sep">·</span>
+      <button type="button" class="footer__link" id="footer-terms-btn">Terms &amp; Conditions</button>
+      <span class="footer__sep">·</span>
+      <button type="button" class="footer__link" id="footer-cookies-btn">Cookie Preferences</button>
+    </div>
   </div>
 </footer>
+
+<!-- ══ cookie consent banner ════════════════════════════════════════════════ -->
+<aside class="cookie-banner" id="cookie-banner" role="region" aria-label="Privacy and Cookie Consent" hidden>
+  <div class="cookie-banner__inner">
+    <div class="cookie-banner__text">
+      <p class="cookie-banner__title">Institutional Privacy &amp; Data Governance</p>
+      <p class="cookie-banner__desc">
+        Heritage Discovery uses essential local storage to remember your viewing settings. With your consent, we also measure anonymous interaction metrics to improve retrieval accuracy. No personal data or query photographs are retained.
+      </p>
+    </div>
+    <div class="cookie-banner__actions">
+      <button type="button" class="btn btn--primary btn--sm" id="cookie-accept-all">Accept All</button>
+      <button type="button" class="btn btn--ghost btn--sm" id="cookie-essential-only">Essential Only</button>
+      <button type="button" class="btn btn--quiet btn--sm" id="cookie-customize">Customize</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ cookie preferences modal ═════════════════════════════════════════════ -->
+<div class="modal-overlay" id="cookie-modal" role="dialog" aria-modal="true" aria-labelledby="cookie-modal-title" hidden>
+  <div class="modal-scrim" data-close-modal="cookie"></div>
+  <div class="modal-card arch-frame">
+    <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
+    <div class="modal-head">
+      <h2 class="modal-title" id="cookie-modal-title">Cookie &amp; Storage Preferences</h2>
+      <button type="button" class="modal-close" data-close-modal="cookie" aria-label="Close preferences">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="pref-group">
+        <div class="pref-info">
+          <h3 class="pref-name">Strictly Essential Storage</h3>
+          <p class="pref-desc">Necessary for remembering consent status, theme preferences, and chapter progression. Cannot be deactivated.</p>
+        </div>
+        <span class="pref-badge">Required</span>
+      </div>
+      <div class="pref-group">
+        <div class="pref-info">
+          <label class="pref-name" for="pref-analytics-toggle">Anonymous Performance Telemetry</label>
+          <p class="pref-desc">Measures recognition workflow latency and search efficiency without collecting personal identities, query photographs, or IP addresses.</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="pref-analytics-toggle" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn--primary btn--sm" id="cookie-save-prefs">Save Preferences</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ legal disclosure modal ═══════════════════════════════════════════════ -->
+<div class="modal-overlay modal-overlay--doc" id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-modal-title" hidden>
+  <div class="modal-scrim" data-close-modal="legal"></div>
+  <div class="modal-card modal-card--lg arch-frame">
+    <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow" id="legal-modal-eyebrow">Institutional Governance</p>
+        <h2 class="modal-title" id="legal-modal-title">Privacy Policy</h2>
+      </div>
+      <button type="button" class="modal-close" data-close-modal="legal" aria-label="Close document">&times;</button>
+    </div>
+    <div class="modal-body modal-body--scroll" id="legal-modal-content">
+      <!-- Injected dynamically by app.js based on selected doc -->
+    </div>
+    <div class="modal-foot">
+      <p class="modal-notice">Draft notice prepared for academic demonstration. Subject to human legal review prior to commercial deployment.</p>
+      <button type="button" class="btn btn--ghost btn--sm" data-close-modal="legal">Close</button>
+    </div>
+  </div>
+</div>
 
 <script type="module" src="app.js"></script>
 </body>

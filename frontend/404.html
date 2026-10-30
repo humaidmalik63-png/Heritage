@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>404 — Monument Not Located | Heritage Discovery</title>
+<meta name="description" content="The requested heritage resource could not be located in the indexed monument catalogue." />
+<meta name="robots" content="noindex, follow" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<style>
+  .error-page {
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: clamp(2rem, 6vw, 4rem) 1.5rem;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+  .error-card {
+    max-width: 620px;
+    width: 100%;
+    padding: clamp(2rem, 5vh, 3.5rem) clamp(1.5rem, 4vw, 3rem);
+    background: rgba(13, 16, 23, 0.82);
+    border: 1px solid rgba(232, 209, 203, 0.18);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+    position: relative;
+  }
+  .error-code {
+    font-family: var(--font-label);
+    font-size: clamp(3.5rem, 2rem + 6vw, 6.5rem);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    line-height: 1;
+    margin: 0 0 0.5rem;
+    text-shadow: 0 0 30px rgba(232, 209, 203, 0.35);
+  }
+  .error-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.4rem, 1rem + 1.6vw, 2rem);
+    font-weight: 350;
+    color: var(--text);
+    margin: 0 0 1.25rem;
+    letter-spacing: -0.01em;
+  }
+  .error-desc {
+    color: var(--text-2);
+    font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
+    line-height: 1.6;
+    margin: 0 auto 2rem;
+    max-width: 480px;
+  }
+  .error-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="frame" aria-hidden="true">
+  <span class="frame__edge frame__edge--tl"></span>
+  <span class="frame__edge frame__edge--tr"></span>
+  <span class="frame__edge frame__edge--bl"></span>
+  <span class="frame__edge frame__edge--br"></span>
+</div>
+
+<main class="error-page">
+  <article class="error-card arch-frame">
+    <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
+    
+    <p class="eyebrow"><span class="eyebrow__tick" aria-hidden="true"></span>Datum Error · 404</p>
+    <div class="error-code">404</div>
+    <h1 class="error-title">Monument Record Not Located</h1>
+    <p class="error-desc">
+      The requested architectural record, resource or coordinates could not be retrieved from the indexed heritage database.
+    </p>
+    <div class="error-actions">
+      <a href="/#home" class="btn btn--primary">Return to Discovery</a>
+      <a href="/#recognition" class="btn btn--ghost">Analyze Photograph</a>
+    </div>
+  </article>
+</main>
+
+</body>
+</html>
+

@@ -1,0 +1,9 @@
+# Robots.txt for Heritage Discovery
+User-agent: *
+Allow: /
+Disallow: /backend/
+Disallow: /data/
+
+# Sitemap location
+Sitemap: /sitemap.xml
+

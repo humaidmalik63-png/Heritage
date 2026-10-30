@@ -1,3 +1,4 @@
+
 """
 Tests for the Google Gemini Vision fallback client and integration.
 """

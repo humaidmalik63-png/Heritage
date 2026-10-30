@@ -63,7 +63,7 @@ Rules:
    - "city": city or region where it is located (or null)
    - "country": country where it is located (or null)
    - "visual_evidence": 1-3 sentences describing the key visible architectural details, carvings, materials, statues, or distinctive structures identifying it
-   - "confidence": estimated confidence score between 0.0 and 1.0
+   - "confidence": estimated visual confidence score between 0.0 and 1.0 reflecting visible architectural evidence, distinctiveness of landmark features, lighting, and camera angle (e.g. higher for unambiguous, iconic views; lower for partial, ambiguous, or distant perspectives; do not simply default to 1.0)
    - "uncertainty": null if certain, or a brief note explaining any uncertainty
    - "alternatives": list of other plausible candidate sites if not 100% certain, or []
    - "limitations": any limitations of the visual analysis (e.g. "Partial view", "Low resolution", "Obscured by crowd") or null

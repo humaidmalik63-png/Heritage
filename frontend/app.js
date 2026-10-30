@@ -142,11 +142,11 @@
   };
 
   var REASON_TEXT = {
-    low_similarity: 'No indexed image was similar enough to accept.',
-    no_evidence: 'The site was matched, but no evidence record is stored for it.',
-    non_heritage: 'The place identified does not appear to be a heritage monument.',
-    answer_declined: 'The grounded answer was declined.',
-    ungrounded_answer: 'The generated answer was not grounded in the evidence.'
+    low_similarity: 'Image embeddings fell below the open-set verification threshold (similarity < 0.8500 or margin < 0.1000). Not confirmed as an indexed catalogue monument.',
+    no_evidence: 'The monument was identified by visual similarity, but no grounded evidence record is stored in the local repository.',
+    non_heritage: 'Visual analysis indicated that the subject matter does not represent a recognized cultural heritage monument.',
+    answer_declined: 'The grounded architectural response was declined due to insufficient textual evidence support.',
+    ungrounded_answer: 'The synthesized response could not be verified against primary evidence records.'
   };
 
   /* ── tiny helpers ─────────────────────────────────────────────────────── */
@@ -177,18 +177,17 @@
     return v.toFixed(4);
   }
 
-  /* Render the confidence the API actually returned.
-     Returns null when the backend sent no numeric confidence, so the caller
-     can hide the block.  There is deliberately no fallback: a successful
-     identification is NOT 100%, and a qualitative verdict is never converted
-     into a percentage.
+  /* Render the confidence score if present.
+     Under no circumstances is 100% ever rendered, as empirical models never achieve
+     absolute certainty. Calibrated probabilities are only used when backed by empirical
+     validation data; otherwise raw similarity and competitor margins are preferred.
 
      One decimal at most, with a bare trailing ".0" dropped -- 0.923 reads as
      92.3%, 0.684 as 68.4%, 0.41 as 41%. */
   function formatConfidence(value) {
     if (typeof value !== 'number' || !isFinite(value)) return null;
     var pctValue = value * 100;
-    if (pctValue >= 99.95) return '100%';
+    if (pctValue >= 99.95) return '99.9%';
     if (pctValue <= 0) return '0%';
     return (Math.round(pctValue * 10) / 10).toFixed(1).replace(/\.0$/, '') + '%';
   }
@@ -227,12 +226,77 @@
     };
   }
 
+  /* ── privacy-first telemetry dispatcher ─────────────────────────────────── */
+
+  function hasAnalyticsConsent() {
+    try {
+      var raw = localStorage.getItem('heritage_cookie_consent');
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      return Boolean(parsed && parsed.analytics);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function trackEvent(name, payload) {
+    if (!hasAnalyticsConsent()) return;
+    try {
+      var eventData = {
+        name: name,
+        path: window.location.hash || '#home',
+        timestamp: new Date().toISOString(),
+        details: payload || {}
+      };
+      window.dispatchEvent(new CustomEvent('heritage:telemetry', { detail: eventData }));
+      if (Array.isArray(window._heritageTelemetryBuffer)) {
+        window._heritageTelemetryBuffer.push(eventData);
+      }
+    } catch (e) {
+      // Fail silently to never interfere with primary UX
+    }
+  }
+
   /* ── router ───────────────────────────────────────────────────────────── */
 
   var views = {};
   var current = 'home';
   var lastFocus = null;
   var booted = false;          // set once init() has finished wiring the DOM
+
+  var VIEW_SEO = {
+    home: {
+      title: 'Heritage Discovery — Visual Recognition & Cultural Discovery Platform',
+      hash: '#home'
+    },
+    recognition: {
+      title: 'Visual Identification Console — Heritage Discovery',
+      hash: '#recognition'
+    },
+    heritage: {
+      title: 'Monuments & Archaeological Catalogue — Heritage Discovery',
+      hash: '#heritage'
+    },
+    about: {
+      title: 'System Architecture & Health — Heritage Discovery',
+      hash: '#about'
+    },
+    detail: {
+      title: 'Monument Architectural Profile — Heritage Discovery',
+      hash: '#heritage'
+    }
+  };
+
+  function updateViewMeta(viewName) {
+    var meta = VIEW_SEO[viewName];
+    if (!meta) return;
+    document.title = meta.title;
+    var canonical = $('link[rel="canonical"]');
+    if (canonical) {
+      var base = window.location.origin + window.location.pathname.replace(/\/$/, '');
+      canonical.setAttribute('href', base + '/' + meta.hash);
+    }
+  }
 
   function showView(name, opts) {
     var target = views[name] ? name : 'home';
@@ -245,6 +309,8 @@
         document.body.style.overflow = 'hidden';
       }
       current = 'detail';
+      updateViewMeta('detail');
+      trackEvent('page_view', { view: 'detail' });
 
       $$('.nav__link').forEach(function (link) {
         var isHeritage = link.getAttribute('data-nav') === 'heritage';
@@ -269,11 +335,24 @@
     }
 
     current = target;
+    updateViewMeta(target);
+    trackEvent('page_view', { view: target });
 
     $$('.nav__link').forEach(function (link) {
       var isCurrent = link.getAttribute('data-nav') === target;
       if (isCurrent) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
+    });
+
+    $$('.menu-panel__link').forEach(function (link) {
+      var isCurrent = link.getAttribute('data-nav') === target;
+      if (isCurrent) {
+        link.setAttribute('aria-current', 'page');
+        link.classList.add('is-active');
+      } else {
+        link.removeAttribute('aria-current');
+        link.classList.remove('is-active');
+      }
     });
 
     var targetEl = views[target];
@@ -338,6 +417,17 @@
               var isCurrent = link.getAttribute('data-nav') === viewName;
               if (isCurrent) link.setAttribute('aria-current', 'page');
               else link.removeAttribute('aria-current');
+            });
+
+            $$('.menu-panel__link').forEach(function (link) {
+              var isCurrent = link.getAttribute('data-nav') === viewName;
+              if (isCurrent) {
+                link.setAttribute('aria-current', 'page');
+                link.classList.add('is-active');
+              } else {
+                link.removeAttribute('aria-current');
+                link.classList.remove('is-active');
+              }
             });
 
             var railIndex = { home: 0, recognition: 1, heritage: 4, about: 5 }[viewName];
@@ -496,7 +586,7 @@
 
   var CHAPTERS = [
     { eyebrow: 'Chapter 01 — Discover', title: ['Recognise the', 'stories of place'],
-      desc: 'Identify monuments from photographs using visual AI, explore their history, and discover the architectural stories behind remarkable places.',
+      desc: 'Identify monuments from photographs using computer vision, explore their history, and discover the architectural stories behind remarkable places.',
       dock: '01 — Discover', imageIndex: 0 },
     { eyebrow: 'Chapter 02 — Recognise', title: ['Every monument', 'begins as a photograph'],
       desc: 'Upload a photograph and the system embeds it with CLIP, then searches the indexed catalogue for visually similar monuments.',
@@ -1290,7 +1380,7 @@
   /* ── upload ───────────────────────────────────────────────────────────── */
 
   var fileInput, uploadZone, uploadIdle, uploadPreview, previewImg, previewName, previewSize;
-  var recognizeBtn, recStatus, uploadError, resultRegion, questionInput;
+  var recognizeBtn, recStatus, uploadError, resultRegion;
   var selected = null;          // { file, dataUrl, name, size }
   var busy = false;
 
@@ -1306,7 +1396,6 @@
     recStatus = $('#rec-status');
     uploadError = $('#upload-error');
     resultRegion = $('#result-region');
-    questionInput = $('#question');
 
     // clicking anywhere on the zone opens the picker, except the buttons,
     // which have their own handlers below
@@ -1537,7 +1626,11 @@
     stageTimers.push(window.setTimeout(function () { setStage('analysis'); }, 450));
     stageTimers.push(window.setTimeout(function () { setStage('match'); }, 1400));
 
-    var payload = { image_base64: selected.dataUrl, question: questionInput.value || '', top_k: 5 };
+    var payload = { image_base64: selected.dataUrl, question: '', top_k: 5 };
+
+    trackEvent('recognition_started', {
+      file_size_bytes: selected.file ? selected.file.size : 0
+    });
 
     fetch(API_BASE + '/recognize', {
       method: 'POST',
@@ -1562,9 +1655,15 @@
         var isGlobal = data.recognition_source === 'gemini' || data.recognition_source === 'ollama';
         recStatus.textContent = data.recognition_source === 'unknown' ? 'Not confirmed'
           : (isGlobal && (!data.global_identification || data.global_identification.unknown || !data.global_identification.site_name)) ? 'Not confirmed'
-          : isGlobal ? 'Identified (Gemini Vision)'
+          : isGlobal ? 'Identified (External Recognition)'
           : 'Complete';
         recStatus.className = 'recognition-actions__status';
+
+        trackEvent('recognition_completed', {
+          recognition_source: data.recognition_source,
+          has_match: data.recognition_source === 'faiss' || data.recognition_source === 'gemini',
+          score: data.similarity !== undefined ? data.similarity : (data.global_identification ? data.global_identification.confidence : null)
+        });
       })
       .catch(function (err) {
         clearStageTimers();
@@ -1581,6 +1680,11 @@
         recStatus.className = 'recognition-actions__status is-err';
         resultRegion.innerHTML = '';
         resultRegion.appendChild(errorPanel(message));
+
+        trackEvent('recognition_failed', {
+          code: code || 'network_error',
+          offline: offline
+        });
       })
       .then(function () {
         busy = false;
@@ -1877,9 +1981,9 @@
     /* banner */
     var banner = el('div', 'result__banner');
     var badgeText =
-      source === 'local' ? 'Local visual recognition'
-      : isGemini ? 'AI Vision Identification — Google Gemini'
-      : 'Identification not confirmed';
+      source === 'local' ? 'Local Catalogue Identification · Verified'
+      : isGemini ? 'External Identification'
+      : 'Identification Declined · Inconclusive';
     banner.appendChild(el('span', 'result__badge', badgeText));
     card.appendChild(banner);
 
@@ -1891,15 +1995,46 @@
          confirm would be presenting an unconfirmed guess as an archive view. */
 
       var uHead = el('div', 'result__headline');
-      uHead.appendChild(el('p', 'result__verdict', 'Not confirmed'));
-      uHead.appendChild(el('h3', 'result__name', 'Could not identify this monument'));
+      uHead.appendChild(el('p', 'result__verdict', 'Identification Declined'));
+      uHead.appendChild(el('h3', 'result__name', 'Inconclusive Visual Match'));
       body.appendChild(uHead);
+
+      /* Diagnostic Metrics - transparently display similarity metrics without fabricating percentages */
+      var diagWrap = el('div', 'result__metrics');
+      diagWrap.style.display = 'flex';
+      diagWrap.style.flexWrap = 'wrap';
+      diagWrap.style.gap = '1.5rem';
+      diagWrap.style.alignItems = 'flex-start';
+
+      var topSim = typeof data.similarity === 'number' ? data.similarity : null;
+      if (typeof topSim === 'number' && isFinite(topSim)) {
+        var uSim = el('div', 'result__confidence');
+        uSim.appendChild(el('p', 'result__label', 'Top CLIP Cosine Similarity'));
+        uSim.appendChild(el('p', 'result__confidence-value', topSim.toFixed(4)));
+        diagWrap.appendChild(uSim);
+      }
+
+      if (typeof data.margin === 'number' && isFinite(data.margin)) {
+        var uMargin = el('div', 'result__confidence');
+        uMargin.appendChild(el('p', 'result__label', 'Competitor Margin'));
+        var uMarginStr = (data.margin >= 0 ? '+' : '') + data.margin.toFixed(4);
+        uMargin.appendChild(el('p', 'result__confidence-value', uMarginStr));
+        diagWrap.appendChild(uMargin);
+      }
+
+      var uGate = el('div', 'result__confidence');
+      uGate.appendChild(el('p', 'result__label', 'Open-Set Gate Status'));
+      uGate.appendChild(el('p', 'result__confidence-value', 'Declined'));
+      diagWrap.appendChild(uGate);
+
+      if (diagWrap.children.length > 0) {
+        body.appendChild(diagWrap);
+      }
 
       var uAbout = el('div', 'result__stack');
       var explanation = (g && (g.visual_evidence || g.reason)) ||
         (data.reason ? (REASON_TEXT[data.reason] || data.reason) : null) ||
-        'This photograph could not be matched confidently to a heritage site. ' +
-        'No monument, location or historical information is shown, because none was established.';
+        'This photograph did not meet the verification thresholds for indexed catalogue monuments (similarity ≥ 0.8500, margin ≥ 0.1000), and external vision fallback did not establish a grounded identification.';
       uAbout.appendChild(el('p', 'result__text', explanation));
 
       if (g && g.limitations) {
@@ -1909,7 +2044,7 @@
         uAbout.appendChild(field('Alternatives considered', g.alternatives.join(', ')));
       }
 
-      body.appendChild(section('About', uAbout));
+      body.appendChild(section('Diagnostic Details', uAbout));
 
       card.appendChild(body);
       resultRegion.innerHTML = '';
@@ -1928,7 +2063,7 @@
       if (galleryNode) body.appendChild(galleryNode);
 
       var lHead = el('div', 'result__headline');
-      lHead.appendChild(el('p', 'result__verdict', 'Identified'));
+      lHead.appendChild(el('p', 'result__verdict', 'Catalogue Confirmed'));
 
       var lName = el('h3', 'result__name', meta.name || (record && record.name) || '—');
       lHead.appendChild(lName);
@@ -1941,14 +2076,39 @@
       if (place) lHead.appendChild(el('p', 'result__place', place));
       body.appendChild(lHead);
 
-      /* CONFIDENCE -- the value the API returned, or nothing at all.  There is
-         no fallback: an accepted match is not 100% by definition. */
-      var localConfidence = confidenceMetric(data.confidence, null);
-      if (localConfidence) {
-        var cBlock = el('div', 'result__confidence');
-        cBlock.appendChild(el('p', 'result__label', 'Confidence'));
-        cBlock.appendChild(el('p', 'result__confidence-value', localConfidence));
-        body.appendChild(cBlock);
+      /* METRICS -- CLIP Cosine Similarity & Competitor Margin.
+         Calibrated probabilities are not displayed because the local catalogue
+         dataset size (~40-50 images) is insufficient for cross-validated empirical calibration.
+         Instead, transparent raw vector similarity metrics are presented. */
+      var metricsWrap = el('div', 'result__metrics');
+      metricsWrap.style.display = 'flex';
+      metricsWrap.style.flexWrap = 'wrap';
+      metricsWrap.style.gap = '1.5rem';
+      metricsWrap.style.alignItems = 'flex-start';
+
+      var simVal = typeof data.similarity === 'number' ? data.similarity : data.confidence;
+      if (typeof simVal === 'number' && isFinite(simVal)) {
+        var simBlock = el('div', 'result__confidence');
+        simBlock.appendChild(el('p', 'result__label', 'CLIP Cosine Similarity'));
+        simBlock.appendChild(el('p', 'result__confidence-value', simVal.toFixed(4)));
+        metricsWrap.appendChild(simBlock);
+      }
+
+      if (typeof data.margin === 'number' && isFinite(data.margin)) {
+        var mBlock = el('div', 'result__confidence');
+        mBlock.appendChild(el('p', 'result__label', 'Competitor Margin'));
+        var marginStr = (data.margin >= 0 ? '+' : '') + data.margin.toFixed(4);
+        mBlock.appendChild(el('p', 'result__confidence-value', marginStr));
+        metricsWrap.appendChild(mBlock);
+      }
+
+      var gateBlock = el('div', 'result__confidence');
+      gateBlock.appendChild(el('p', 'result__label', 'Decision Boundary'));
+      gateBlock.appendChild(el('p', 'result__confidence-value', 'Verified Match'));
+      metricsWrap.appendChild(gateBlock);
+
+      if (metricsWrap.children.length > 0) {
+        body.appendChild(metricsWrap);
       }
 
       /* about: catalogue metadata, then enrichment from the local catalogue */
@@ -1972,7 +2132,7 @@
       var altName = meta.alternate_name || (record && record.alternate_names && record.alternate_names[0]) || null;
       if (altName) about.appendChild(field('Also known as', altName));
 
-      var aboutSection = section('About', about.children.length ? about : null);
+      var aboutSection = section('Recognition Details & Architectural Profile', about.children.length ? about : null);
       if (aboutSection) body.appendChild(aboutSection);
 
       /* highlights — evidence claims actually returned by the backend */
@@ -1982,15 +2142,15 @@
       if (claims && claims.length) {
         var ul = el('ul', 'factlist');
         claims.forEach(function (claim) { ul.appendChild(el('li', null, claim)); });
-        body.appendChild(section('Highlights', ul));
+        body.appendChild(section('Evidence Records & Grounded Claims', ul));
       }
 
       /* answer, when one was actually grounded */
       if (data.answer && data.is_grounded) {
-        body.appendChild(section('Grounded answer', el('p', 'result__text', data.answer)));
+        body.appendChild(section('Grounded Architectural Synthesis', el('p', 'result__text', data.answer)));
       }
 
-      body.appendChild(section('Sources', sourcesBlock(data, record)));
+      body.appendChild(section('Evidence Sources & Citations', sourcesBlock(data, record)));
 
       card.appendChild(body);
       resultRegion.innerHTML = '';
@@ -2013,24 +2173,65 @@
     if (gGallery) body.appendChild(gGallery);
 
     var gHead = el('div', 'result__headline');
-    gHead.appendChild(el('p', 'result__verdict', 'Identified'));
     gHead.appendChild(el('h3', 'result__name', g.site_name || 'Could not identify this monument'));
     var gPlace = [g.city, g.country].filter(Boolean).join(', ') || g.country_or_region || '';
     if (gPlace) gHead.appendChild(el('p', 'result__place', gPlace));
     body.appendChild(gHead);
 
-    /* Confidence from the vision model, or nothing.  A missing value is never
-       promoted to 100%. */
-    var globalConfidence = confidenceMetric(
-      typeof g.confidence === 'number' ? g.confidence : data.confidence,
-      g.uncertain ? 'Uncertain' : null
-    );
-    if (globalConfidence) {
-      var gConf = el('div', 'result__confidence');
-      gConf.appendChild(el('p', 'result__label', 'Confidence'));
-      gConf.appendChild(el('p', 'result__confidence-value', globalConfidence));
-      body.appendChild(gConf);
+    /* External Identification: Recognition Score */
+    var confBox = el('div', 'result__confidence result__confidence--gemini');
+
+    var confHeader = el('div', 'result__confidence-header');
+    confHeader.appendChild(el('p', 'result__label', 'Recognition Score'));
+
+    var rawConf = (typeof g.confidence === 'number' && isFinite(g.confidence) && g.confidence > 0)
+      ? g.confidence
+      : (typeof data.confidence === 'number' && isFinite(data.confidence) && data.confidence > 0)
+      ? data.confidence
+      : null;
+
+    if (rawConf != null) {
+      // Scale to percentage from actual model estimate; cap at 99% to avoid misleading 100% calibrated certainty claims
+      var pctValue = Math.min(99, Math.max(1, Math.round(rawConf * 100)));
+      var pctText = pctValue + '%';
+
+      var ratingLabel = 'Low';
+      var ratingClass = 'low';
+      if (pctValue >= 85) {
+        ratingLabel = 'High';
+        ratingClass = 'high';
+      } else if (pctValue >= 60) {
+        ratingLabel = 'Moderate';
+        ratingClass = 'moderate';
+      }
+
+      confHeader.appendChild(el('span', 'confidence-tag confidence-tag--' + ratingClass, ratingLabel));
+      confBox.appendChild(confHeader);
+
+      var confRow = el('div', 'result__confidence-row');
+      confRow.appendChild(el('p', 'result__confidence-value', pctText));
+      confBox.appendChild(confRow);
+
+      var bar = el('div', 'confidence-bar');
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-valuenow', String(pctValue));
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', '100');
+
+      var barFill = el('div', 'confidence-bar__fill confidence-bar__fill--' + ratingClass);
+      barFill.style.width = pctValue + '%';
+      bar.appendChild(barFill);
+      confBox.appendChild(bar);
+    } else {
+      confBox.appendChild(confHeader);
+      confBox.appendChild(el('p', 'result__confidence-value result__confidence-value--unavailable', 'Score unavailable'));
     }
+
+    var disclaimer = el('p', 'confidence-disclaimer',
+      'External visual estimate; not independently verified against the local catalogue.'
+    );
+    confBox.appendChild(disclaimer);
+    body.appendChild(confBox);
 
     var gAbout = el('div', 'result__stack');
     if (g.significance) gAbout.appendChild(field('Significance', g.significance));
@@ -2042,26 +2243,26 @@
     if (Array.isArray(g.alternatives) && g.alternatives.length) {
       gAbout.appendChild(field('Alternatives considered', g.alternatives.join(', ')));
     }
-    var gAboutSection = section('About', gAbout.children.length ? gAbout : null);
+    var gAboutSection = section('Architectural Profile', gAbout.children.length ? gAbout : null);
     if (gAboutSection) body.appendChild(gAboutSection);
 
     var visualExp = g.visual_evidence || g.reason;
-    if (visualExp) body.appendChild(section('Visual explanation', el('p', 'result__text', visualExp)));
+    if (visualExp) body.appendChild(section('Visual Feature Analysis', el('p', 'result__text', visualExp)));
 
     if (Array.isArray(g.interesting_facts) && g.interesting_facts.length) {
       var gFacts = el('ul', 'factlist');
       g.interesting_facts.forEach(function (f) {
         if (f) gFacts.appendChild(el('li', null, String(f)));
       });
-      if (gFacts.children.length) body.appendChild(section('Additional information', gFacts));
+      if (gFacts.children.length) body.appendChild(section('Additional Heritage Context', gFacts));
     }
 
     /* Answer to optional question, clearly distinguishing visual answers from grounded answers */
     if (data.answer) {
       var ansWrap = el('div', 'result__stack');
       ansWrap.appendChild(el('p', 'result__text', data.answer));
-      ansWrap.appendChild(el('p', 'source__note', 'AI-generated response based on visual identification — not independently verified against catalogue evidence.'));
-      body.appendChild(section('AI Vision Answer', ansWrap));
+      ansWrap.appendChild(el('p', 'source__note', 'Model-generated synthesis based on visual identification — not independently verified against catalogue evidence records.'));
+      body.appendChild(section('Multimodal Vision Synthesis', ansWrap));
     }
 
     /* Sources: the backend deliberately returns a label with no URL here. */
@@ -2079,12 +2280,12 @@
       });
     } else {
       var note = el('div', 'source');
-      note.appendChild(el('span', 'source__name', 'AI Vision Identification — Google Gemini'));
+      note.appendChild(el('span', 'source__name', 'External Recognition'));
       note.appendChild(el('span', 'source__note',
-        'This identification is AI-generated by Google Gemini Vision and is not independently verified against the local heritage catalogue.'));
+        'This identification was produced by an external service and has not been verified against the local catalogue.'));
       srcWrap.appendChild(note);
     }
-    body.appendChild(section('Sources', srcWrap));
+    body.appendChild(section('Verification Status', srcWrap));
 
     card.appendChild(body);
     resultRegion.innerHTML = '';
@@ -2306,8 +2507,18 @@
     });
   }
 
+  var debouncedTrackFilter = debounce(function (queryLen, region, country, type) {
+    trackEvent('catalogue_filter', {
+      query_length: queryLen,
+      has_region: Boolean(region),
+      has_country: Boolean(country),
+      has_type: Boolean(type)
+    });
+  }, 600);
+
   function applyFilters() {
     var query = (searchInput.value || '').trim();
+    debouncedTrackFilter(query.length, regionSelect.value, countrySelect.value, typeSelect.value);
     var filtered = catalogue.filter(function (record) {
       return matchesFilters(record, query, regionSelect.value, countrySelect.value, typeSelect.value);
     });
@@ -2515,6 +2726,8 @@
       return;
     }
 
+    trackEvent('monument_detail_view', { site_id: siteId, name: record.name });
+
     var root = $('#detail-root');
     root.innerHTML = '';
 
@@ -2585,6 +2798,9 @@
 
     root.appendChild(cols);
     showView('detail');
+    if (record.name) {
+      document.title = record.name + ' — Architectural Profile | Heritage Discovery';
+    }
     history.replaceState(null, '', '#heritage/' + record.site_id);
   }
 
@@ -2596,13 +2812,48 @@
     return wrap;
   }
 
+  /* ── scroll progress indicator ─────────────────────────────────────────── */
+
+  function initScrollProgress() {
+    var progressBar = $('#scroll-progress-bar');
+    if (!progressBar) return;
+
+    var ticking = false;
+
+    function update() {
+      var winScroll = window.scrollY || document.documentElement.scrollTop || 0;
+      var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      var scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+      if (scrolled > 100) scrolled = 100;
+      if (scrolled < 0) scrolled = 0;
+      progressBar.style.width = scrolled.toFixed(2) + '%';
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', function () {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    }, { passive: true });
+
+    window.addEventListener('resize', function () {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    }, { passive: true });
+
+    update();
+  }
+
   /* ── cinematic loader ─────────────────────────────────────────────────── */
 
   var loaderMessages = [
-    'Awakening the archives',
-    'Uncovering cultural stories',
-    'Preparing your journey',
-    'Opening the heritage experience'
+    'Initializing vector index & evidence repository',
+    'Calibrating visual feature embeddings',
+    'Configuring open-set decision boundaries',
+    'Loading architectural monument catalogue'
   ];
   var loaderMessageIndex = 0;
   var loaderMessageTimer = null;
@@ -2621,15 +2872,15 @@
       loaderMessageIndex = (loaderMessageIndex + 1) % loaderMessages.length;
       if (loaderMessageEl) {
         loaderMessageEl.style.opacity = '0';
-        loaderMessageEl.style.transition = 'opacity 0.5s cubic-bezier(.22, .61, .36, 1)';
+        loaderMessageEl.style.transition = 'opacity 0.4s cubic-bezier(.22, .61, .36, 1)';
         window.setTimeout(function () {
           loaderMessageEl.textContent = loaderMessages[loaderMessageIndex];
           loaderMessageEl.style.opacity = '1';
-        }, 500);
+        }, 400);
       }
-    }, 1600);
+    }, 1800);
 
-    // Add subtle progress animation
+    // Dynamic progress bar animation
     if (loaderBar) {
       var progress = 0;
       var progressInterval = window.setInterval(function () {
@@ -2637,19 +2888,22 @@
           window.clearInterval(progressInterval);
           return;
         }
-        progress = Math.min(progress + Math.random() * 5, 92);
+        progress = Math.min(progress + (Math.random() * 12 + 6), 92);
         loaderBar.style.width = progress.toFixed(1) + '%';
-      }, 350);
+      }, 180);
     }
   }
 
   function hideLoader() {
     if (!loaderElement || loaderElement.classList.contains('is-hidden')) return;
-    if (loaderMessageTimer) window.clearInterval(loaderMessageTimer);
+    if (loaderMessageTimer) {
+      window.clearInterval(loaderMessageTimer);
+      loaderMessageTimer = null;
+    }
 
-    // Complete the progress bar
+    // Complete the progress bar smoothly
     if (loaderBar) {
-      loaderBar.style.transition = 'width 0.5s cubic-bezier(.22, .61, .36, 1)';
+      loaderBar.style.transition = 'width 0.35s cubic-bezier(.22, .61, .36, 1)';
       loaderBar.style.width = '100%';
     }
 
@@ -2657,7 +2911,236 @@
     window.setTimeout(function () {
       loaderElement.classList.add('is-hidden');
       loaderElement.setAttribute('aria-hidden', 'true');
-    }, 400);
+    }, 380);
+  }
+
+  /* ── privacy, legal & consent management ───────────────────────────────── */
+
+  var LEGAL_DOCS = {
+    privacy: {
+      eyebrow: 'Institutional Governance',
+      title: 'Institutional Privacy Policy',
+      content: '<div class="legal-doc">' +
+        '<div class="legal-doc__meta"><strong>Governance Framework:</strong> Academic Demonstration · <strong>Effective:</strong> October 2026 · <strong>Scope:</strong> Visual Heritage Recognition & Cultural Discovery Platform</div>' +
+        '<p>The Visual Heritage Recognition Platform is an educational and cultural research service dedicated to architectural monument preservation. We operate under a strict philosophy of data minimization and ephemeral in-memory processing.</p>' +
+        '<h3>1. Zero-Retention Photographic Processing</h3>' +
+        '<p>Photographs submitted via the Identification Console are held ephemerally in volatile memory solely for mathematical vector feature encoding (CLIP 512-dimensional embedding). Uploaded imagery is:</p>' +
+        '<ul>' +
+        '<li><strong>Never written to persistent storage</strong>, databases, or cloud object stores.</li>' +
+        '<li><strong>Never reused for training</strong> or fine-tuning commercial machine learning models without express written institutional consent.</li>' +
+        '<li><strong>Discarded immediately</strong> after index similarity comparison completes.</li>' +
+        '</ul>' +
+        '<h3>2. Local Browser Storage &amp; Cookies</h3>' +
+        '<p>The platform does not employ tracking cookies, marketing beacons, or cross-site fingerprinting scripts. We store strictly essential interface preferences (such as your cookie consent selection) in browser <code>localStorage</code> under the key <code>heritage_cookie_consent</code>.</p>' +
+        '<h3>3. Anonymous Performance Telemetry</h3>' +
+        '<p>If you explicitly grant permission for performance telemetry, anonymous non-identifiable interaction signals (such as view navigation and recognition pipeline latency) are recorded to evaluate retrieval accuracy. These signals contain no IP addresses, geolocation data, personal credentials, or photographic bytes.</p>' +
+        '<h3>4. External Inference Disclosures</h3>' +
+        '<p>When a query image does not match the verified local catalogue threshold (similarity &ge; 0.85, competitor margin &ge; 0.10), an external vision reasoning service may be queried as an exploratory fallback. Such requests transmit only the ephemeral image bytes; no user identity, session token, or telemetry is shared.</p>' +
+        '<h3>5. Preference Updates &amp; Contact</h3>' +
+        '<p>You may inspect, modify, or revoke your consent preferences at any time by selecting "Cookie Preferences" in the page footer or by clearing your browser cache. For academic inquiries regarding our privacy standards, contact the project maintainers.</p>' +
+        '</div>'
+    },
+    terms: {
+      eyebrow: 'Platform Protocols',
+      title: 'Terms & Conditions of Exploration',
+      content: '<div class="legal-doc">' +
+        '<div class="legal-doc__meta"><strong>Operating Edition:</strong> Academic & Research Demonstration · <strong>Effective:</strong> October 2026</div>' +
+        '<p>By accessing the Visual Heritage Recognition Platform, you agree to engage with the system under the ethical research and cultural preservation terms outlined below.</p>' +
+        '<h3>1. Purpose &amp; Academic Scope</h3>' +
+        '<p>This platform is an open-access cultural discovery engine combining open-clip vision embeddings with official historical records. It is intended for educational, academic, and cultural research purposes.</p>' +
+        '<h3>2. Grounded vs. External Verification</h3>' +
+        '<p>The platform clearly distinguishes between two levels of certainty:</p>' +
+        '<ul>' +
+        '<li><strong>Verified Catalogue Identifications:</strong> Rigorously matched against our local FAISS vector catalogue with validated cosine similarity (&ge; 0.85) and competitor margin (&ge; 0.10), grounded in official Archaeological Survey of India (ASI) and UNESCO records.</li>' +
+        '<li><strong>External Identifications:</strong> Generated via external vision inference models when no local match meets verified thresholds. External scores represent exploratory assessments and must not be interpreted as certified architectural facts.</li>' +
+        '</ul>' +
+        '<h3>3. Acceptable Use Policy</h3>' +
+        '<p>Users agree not to submit abusive, unlawful, or intentionally deceptive imagery to the recognition engine. Automated scraping or denial-of-service attempts against the inference endpoints are strictly prohibited.</p>' +
+        '<h3>4. Intellectual Property &amp; Citations</h3>' +
+        '<p>Historical records, architectural descriptions, and reference photographs are curated from public cultural databases, UNESCO World Heritage documentation, and the Archaeological Survey of India under academic fair dealing principles. Proper attribution must accompany any research citation derived from this system.</p>' +
+        '<h3>5. Disclaimer of Warranty</h3>' +
+        '<p>The platform is provided "as is" without warranty of continuous uptime or definitive architectural certification. Users are encouraged to cross-reference findings with primary archaeological documentation for authoritative research.</p>' +
+        '</div>'
+    }
+  };
+
+  function initLegalAndConsent() {
+    var cookieBanner = $('#cookie-banner');
+    var cookieModal = $('#cookie-modal');
+    var legalModal = $('#legal-modal');
+    var analyticsToggle = $('#pref-analytics-toggle');
+    var lastModalFocus = null;
+
+    function getConsent() {
+      try {
+        var raw = localStorage.getItem('heritage_cookie_consent');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveConsent(analyticsAllowed) {
+      try {
+        var record = {
+          essential: true,
+          analytics: Boolean(analyticsAllowed),
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('heritage_cookie_consent', JSON.stringify(record));
+        if (analyticsToggle) analyticsToggle.checked = Boolean(analyticsAllowed);
+      } catch (e) {}
+    }
+
+    // Initialize banner state based on existing consent
+    var currentConsent = getConsent();
+    if (cookieBanner) {
+      if (currentConsent) {
+        cookieBanner.hidden = true;
+        if (analyticsToggle) analyticsToggle.checked = Boolean(currentConsent.analytics);
+      } else {
+        cookieBanner.hidden = false;
+        if (analyticsToggle) analyticsToggle.checked = false;
+      }
+    }
+
+    // Modal helpers
+    function openModal(modalEl) {
+      if (!modalEl) return;
+      lastModalFocus = document.activeElement;
+      modalEl.hidden = false;
+      document.body.style.overflow = 'hidden';
+      var focusTarget = modalEl.querySelector('.modal-close') || modalEl.querySelector('button');
+      if (focusTarget) focusTarget.focus();
+    }
+
+    function closeModal(modalEl) {
+      if (!modalEl || modalEl.hidden) return;
+      modalEl.hidden = true;
+      if (cookieModal.hidden && legalModal.hidden && (!views.detail || views.detail.hidden)) {
+        document.body.style.overflow = '';
+      }
+      if (lastModalFocus && typeof lastModalFocus.focus === 'function') {
+        lastModalFocus.focus();
+        lastModalFocus = null;
+      }
+    }
+
+    function openLegalDoc(type) {
+      var doc = LEGAL_DOCS[type];
+      if (!doc || !legalModal) return;
+      var eyebrow = $('#legal-modal-eyebrow');
+      var title = $('#legal-modal-title');
+      var content = $('#legal-modal-content');
+      if (eyebrow) eyebrow.textContent = doc.eyebrow;
+      if (title) title.textContent = doc.title;
+      if (content) content.innerHTML = doc.content;
+      openModal(legalModal);
+      trackEvent('legal_document_viewed', { document: type });
+    }
+
+    // Banner buttons
+    var acceptAllBtn = $('#cookie-accept-all');
+    if (acceptAllBtn) {
+      acceptAllBtn.addEventListener('click', function () {
+        saveConsent(true);
+        if (cookieBanner) cookieBanner.hidden = true;
+        trackEvent('consent_updated', { analytics: true, mode: 'accept_all' });
+      });
+    }
+
+    var essentialOnlyBtn = $('#cookie-essential-only');
+    if (essentialOnlyBtn) {
+      essentialOnlyBtn.addEventListener('click', function () {
+        saveConsent(false);
+        if (cookieBanner) cookieBanner.hidden = true;
+        trackEvent('consent_updated', { analytics: false, mode: 'essential_only' });
+      });
+    }
+
+    var customizeBtn = $('#cookie-customize');
+    if (customizeBtn) {
+      customizeBtn.addEventListener('click', function () {
+        openModal(cookieModal);
+      });
+    }
+
+    // Footer buttons
+    var footerCookiesBtn = $('#footer-cookies-btn');
+    if (footerCookiesBtn) {
+      footerCookiesBtn.addEventListener('click', function () {
+        openModal(cookieModal);
+      });
+    }
+
+    var footerPrivacyBtn = $('#footer-privacy-btn');
+    if (footerPrivacyBtn) {
+      footerPrivacyBtn.addEventListener('click', function () {
+        openLegalDoc('privacy');
+      });
+    }
+
+    var footerTermsBtn = $('#footer-terms-btn');
+    if (footerTermsBtn) {
+      footerTermsBtn.addEventListener('click', function () {
+        openLegalDoc('terms');
+      });
+    }
+
+    // Save preferences from preferences modal
+    var savePrefsBtn = $('#cookie-save-prefs');
+    if (savePrefsBtn) {
+      savePrefsBtn.addEventListener('click', function () {
+        var allowed = analyticsToggle ? analyticsToggle.checked : false;
+        saveConsent(allowed);
+        closeModal(cookieModal);
+        if (cookieBanner) cookieBanner.hidden = true;
+        trackEvent('consent_updated', { analytics: allowed, mode: 'custom_preferences' });
+      });
+    }
+
+    // Close buttons and scrim clicks for both modals
+    $$('[data-close-modal="cookie"]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        closeModal(cookieModal);
+      });
+    });
+
+    $$('[data-close-modal="legal"]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        closeModal(legalModal);
+      });
+    });
+
+    // Global keyboard listener for closing modals with Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        if (cookieModal && !cookieModal.hidden) {
+          closeModal(cookieModal);
+        } else if (legalModal && !legalModal.hidden) {
+          closeModal(legalModal);
+        }
+      }
+    });
+
+    // Simple accessible focus trapping within modals
+    [cookieModal, legalModal].forEach(function (modal) {
+      if (!modal) return;
+      modal.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') return;
+        var focusables = modal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])');
+        if (focusables.length === 0) return;
+        var first = focusables[0];
+        var last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      });
+    });
   }
 
   /* ── boot ─────────────────────────────────────────────────────────────── */
@@ -2665,6 +3148,7 @@
   function init() {
     document.body.classList.add('js-ready');
     initLoader();
+    initScrollProgress();
     initSlideshow();
     initRouter();
     initScrollSpy();
@@ -2675,14 +3159,17 @@
     initStoryline();
     initUpload();
     initExplorer();
+    initLegalAndConsent();
 
     refreshHealth();
     loadGalleryManifest();
     loadCatalogue();
     booted = true;
 
-    // Hide loader once initial DOM and assets are initialized smoothly
-    window.setTimeout(hideLoader, 600);
+    // Smooth reveal timeout allowing architectural line art and grid to render
+    window.setTimeout(hideLoader, 1100);
+    // Hard ceiling safety timeout to ensure interface is never blocked
+    window.setTimeout(hideLoader, 2500);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

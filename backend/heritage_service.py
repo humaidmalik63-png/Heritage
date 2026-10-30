@@ -81,12 +81,14 @@ class RecognitionResult:
     # that field always stays the local CLIP cosine so the two remain
     # distinguishable.  ``None`` when nothing was confirmed.
     confidence: Optional[float] = None
+    margin: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "site_id": self.site_id,
             "similarity": self.similarity,
             "confidence": self.confidence,
+            "margin": self.margin,
             "confident": self.confident,
             "confirmed": self.confirmed,
             "decision": self.decision,
@@ -227,6 +229,25 @@ class HeritageService:
         matches = self._ranked_matches(embedding, effective_k)
         decision = self.open_set.decide(matches, effective_k)
 
+        # Compute competitor margin from open-set decision site scores
+        computed_margin = None
+        if decision.site_scores and len(decision.site_scores) > 1:
+            sorted_scores = sorted(
+                decision.site_scores.values(),
+                key=lambda s: s.best_score,
+                reverse=True,
+            )
+            top_site = sorted_scores[0]
+            computed_margin = round(
+                float(self.open_set.compute_margin(top_site, decision.site_scores)),
+                4,
+            )
+        elif decision.site_scores and len(decision.site_scores) == 1:
+            computed_margin = round(
+                float(list(decision.site_scores.values())[0].best_score),
+                4,
+            )
+
         top_similarity = (
             round(decision.similarity, 6)
             if decision.similarity is not None
@@ -236,13 +257,12 @@ class HeritageService:
         result = RecognitionResult(
             site_id=decision.site_id if decision.confirmed else "unknown",
             similarity=top_similarity,
+            margin=computed_margin,
             confident=decision.confirmed,
             confirmed=decision.confirmed,
             decision="match" if decision.confirmed else "unknown",
             recognition_source="local" if decision.confirmed else "unknown",
-            # For a local match the deciding model's confidence IS the CLIP
-            # cosine; they are the same quantity, so it is mirrored here
-            # rather than conflated with the Ollama fallback's confidence.
+            # Raw CLIP cosine similarity for local candidate
             confidence=top_similarity if decision.confirmed else None,
             global_identification=None,
             top_k=effective_k,

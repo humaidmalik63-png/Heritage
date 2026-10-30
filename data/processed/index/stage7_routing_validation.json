@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-10-30T18:26:16",
+  "status": "FALLBACK_ROUTING_VERIFIED",
+  "case1_local_confirmed_gemini_called": false,
+  "case2_local_rejected_gemini_called": true,
+  "case2_gemini_unverified_flag": true,
+  "case3_api_timeout_safety": true,
+  "case4_non_heritage_rejection": true,
+  "ollama_invocation_count": 0,
+  "live_gemini_calls": 0
+}

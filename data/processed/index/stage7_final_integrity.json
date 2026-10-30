@@ -1,0 +1,12 @@
+{
+  "post_test_verification": "SUCCESS",
+  "active_index_sha256": "a61bf663ad5e78acdfb44cd0fedea43854b879cd7c28d332d9dcd6fe32dafb9a",
+  "active_mapping_sha256": "adb9911d90fc1f699676647f100dee40196c66769bcf530d59c6b5fd429913f0",
+  "pre_test_hash_matched": true,
+  "stage6_backups_intact": true,
+  "production_vectors": 40,
+  "production_dimension": 512,
+  "thresholds_preserved": true,
+  "zero_quota_consumed": true,
+  "ollama_invoked": false
+}

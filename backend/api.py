@@ -13,8 +13,10 @@ import binascii
 import logging
 import os
 import tempfile
+import time
+from collections import defaultdict
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 # Load environment variables from a local .env file (if present) before any
 # service configuration is read.  This is the only place the project loads
@@ -28,10 +30,12 @@ except ImportError:
     # variables supplied through the real process environment.
     pass
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from backend.heritage_service import HeritageService, build_service
 
@@ -45,12 +49,88 @@ ERROR_INVALID_INPUT = "invalid_input"
 ERROR_NOT_FOUND = "not_found"
 ERROR_UNPROCESSABLE = "unprocessable_image"
 ERROR_INTERNAL = "internal_error"
+ERROR_RATE_LIMITED = "rate_limited"
+
+
+# ── security & abuse protection ───────────────────────────────────────────────
+
+class InMemoryRateLimiter:
+    """Sliding-window rate limiter per client IP address."""
+
+    def __init__(self, requests_per_minute: int = 120):
+        self.limit = requests_per_minute
+        self.window = 60.0
+        self._history: Dict[str, List[float]] = defaultdict(list)
+
+    def is_allowed(self, client_ip: str) -> Tuple[bool, int]:
+        now = time.time()
+        window_start = now - self.window
+        timestamps = [t for t in self._history[client_ip] if t > window_start]
+        self._history[client_ip] = timestamps
+
+        if len(timestamps) >= self.limit:
+            retry_after = int(self.window - (now - timestamps[0])) + 1
+            return False, max(1, retry_after)
+
+        self._history[client_ip].append(now)
+        return True, 0
+
+
+rate_limiter = InMemoryRateLimiter(
+    requests_per_minute=int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
+)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Enforces essential security headers and optional production HTTPS redirects."""
+
+    def __init__(self, app, enforce_https: bool = False):
+        super().__init__(app)
+        self.enforce_https = enforce_https
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        # Production HTTPS enforcement
+        if self.enforce_https:
+            proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+            if proto == "http":
+                url = request.url.replace(scheme="https")
+                return Response(status_code=301, headers={"Location": str(url)})
+
+        response = await call_next(request)
+
+        # Security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob: https:; "
+            "connect-src 'self' http://localhost:* http://127.0.0.1:* https:; "
+            "font-src 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self';"
+        )
+        if self.enforce_https or request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+
+        return response
+
 
 app = FastAPI(
     title="Heritage Discovery API",
     version="1.0.0",
     description="Heritage site recognition with grounded, cited answers.",
 )
+
+# Apply Security Headers Middleware
+enforce_https = os.getenv("ENFORCE_HTTPS", "false").lower() in ("true", "1", "yes")
+app.add_middleware(SecurityHeadersMiddleware, enforce_https=enforce_https)
 
 # Allow the local frontends to call POST /recognize.
 # Production origins can be supplied via the ALLOWED_ORIGINS environment
@@ -68,8 +148,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS", "HEAD"],
+    allow_headers=["Content-Type", "Accept", "Authorization", "X-Requested-With"],
 )
 
 # Populated by get_service() on first use.
@@ -102,7 +182,7 @@ class RecognizeRequest(BaseModel):
         default=None, description="Base64-encoded query image."
     )
     question: str = Field(
-        default="", description="Optional question about the matched site."
+        default="", max_length=500, description="Optional question about the matched site."
     )
     top_k: int = Field(
         default=5, ge=1, le=50, description="Number of candidate matches to return."
@@ -134,6 +214,7 @@ class RecognizeResponse(BaseModel):
     site_id: str
     similarity: float
     confidence: Optional[float] = None
+    margin: Optional[float] = None
     confident: bool
     confirmed: bool = False
     decision: str
@@ -151,6 +232,33 @@ class RecognizeResponse(BaseModel):
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
+def _validate_image_magic_bytes(data: bytes) -> str:
+    """Validate image binary header and return canonical file extension.
+
+    Raises ValueError if data is not a recognized JPEG, PNG, or WebP.
+    """
+    if len(data) < 12:
+        raise ValueError("Image file is too small to be valid")
+
+    # JPEG: starts with FF D8 FF
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+
+    # PNG: starts with 89 50 4E 47 0D 0A 1A 0A
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+
+    # WebP: RIFF....WEBP
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+
+    # GIF fallback
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return ".gif"
+
+    raise ValueError("File content is not a recognized JPEG, PNG, or WebP image")
+
 
 def _error(status_code: int, code: str, detail: str) -> JSONResponse:
     """Build a safe error response (no internal detail, no stack traces)."""
@@ -210,10 +318,13 @@ def _resolve_query(request: RecognizeRequest) -> Iterator[str]:
     except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail=ERROR_INVALID_INPUT)
 
-    if not data:
+    if not data or len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=400, detail=ERROR_INVALID_INPUT)
 
-    if len(data) > MAX_IMAGE_BYTES:
+    try:
+        detected_suffix = _validate_image_magic_bytes(data)
+        suffix = detected_suffix or suffix
+    except ValueError:
         raise HTTPException(status_code=400, detail=ERROR_INVALID_INPUT)
 
     with _temp_image(data, suffix) as path:
@@ -247,8 +358,25 @@ def health() -> HealthResponse:
 
 
 @app.post("/recognize", response_model=RecognizeResponse)
-async def recognize(request: RecognizeRequest) -> Any:
+async def recognize(request: RecognizeRequest, client_request: Request) -> Any:
     """Recognize a heritage site and optionally answer a question about it."""
+    # Spam / abuse rate limiting check
+    client_ip = client_request.client.host if client_request.client else "127.0.0.1"
+    forwarded = client_request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+
+    allowed, retry_after = rate_limiter.is_allowed(client_ip)
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": ERROR_RATE_LIMITED,
+                "detail": "Rate limit exceeded. Please wait before submitting more queries.",
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
+
     try:
         service = get_service()
     except Exception:

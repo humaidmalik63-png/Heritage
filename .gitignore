@@ -11,3 +11,6 @@ dist/
 build/
 .vscode/
 .idea/
+data/raw_candidate/
+data/processed/index/backup/stage6/
+data/processed/index/candidate/stage5/
