@@ -121,8 +121,8 @@
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       return location.protocol + '//' + location.hostname + ':8000';
     }
-    // Remote host (e.g. Vercel) with no explicit backend URL configured
-    return '';
+    // Remote host (e.g. Vercel): default to the user's live Render cloud backend
+    return 'https://heritage-1-why4.onrender.com';
   }
 
   var API_BASE = resolveInitialApiBase();
@@ -1778,6 +1778,7 @@
     options.appendChild(optLabel);
 
     var presets = [
+      { label: 'Render Cloud (Live)', url: 'https://heritage-1-why4.onrender.com' },
       { label: 'Local (127.0.0.1:8000)', url: 'http://127.0.0.1:8000' },
       { label: 'Localhost (8000)', url: 'http://localhost:8000' }
     ];
