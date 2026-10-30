@@ -1,0 +1,11 @@
+streamlit>=1.30.0
+torch>=2.0.0
+transformers>=4.30.0
+faiss-cpu>=1.7.4
+pillow>=9.0.0
+numpy>=1.24.0
+httpx>=0.24.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+fastapi>=0.100.0
+starlette>=0.27.0
