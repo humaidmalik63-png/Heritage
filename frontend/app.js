@@ -101,9 +101,43 @@
     return false;
   }
 
-  var API_BASE =
-    (document.documentElement.getAttribute('data-api-base') || '').replace(/\/$/, '') ||
-    (location.protocol === 'file:' ? 'http://localhost:8000' : location.protocol + '//' + location.hostname + ':8000');
+  function resolveInitialApiBase() {
+    try {
+      var stored = localStorage.getItem('heritage_api_base');
+      if (stored && stored.trim()) return stored.trim().replace(/\/$/, '');
+    } catch (_) {}
+
+    var attr = (document.documentElement.getAttribute('data-api-base') || '').trim();
+    if (attr) return attr.replace(/\/$/, '');
+
+    try {
+      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) {
+        var envBase = String(import.meta.env.VITE_API_BASE).trim();
+        if (envBase) return envBase.replace(/\/$/, '');
+      }
+    } catch (_) {}
+
+    if (location.protocol === 'file:') return 'http://localhost:8000';
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      return location.protocol + '//' + location.hostname + ':8000';
+    }
+    // Remote host (e.g. Vercel) with no explicit backend URL configured
+    return '';
+  }
+
+  var API_BASE = resolveInitialApiBase();
+
+  function setApiBase(url) {
+    API_BASE = (url || '').trim().replace(/\/$/, '');
+    try {
+      if (API_BASE) {
+        localStorage.setItem('heritage_api_base', API_BASE);
+      } else {
+        localStorage.removeItem('heritage_api_base');
+      }
+    } catch (_) {}
+    refreshHealth();
+  }
 
   // The catalogue lives outside this folder. When the frontend is served from
   // a local HTTP server rooted at the project, the relative path resolves; the
@@ -1328,6 +1362,11 @@
   var health = null;
 
   function refreshHealth() {
+    if (!API_BASE) {
+      health = null;
+      paintHealth();
+      return Promise.resolve(null);
+    }
     return fetch(API_BASE + '/health')
       .then(function (res) { return res.ok ? res.json() : null; })
       .then(function (data) {
@@ -1346,9 +1385,21 @@
     var dockSystem = $('#dock-system');
     var dockIndex = $('#dock-index');
 
+    if (!dockSystem || !dockIndex) return;
+
+    if (!API_BASE) {
+      dockSystem.textContent = 'API not connected';
+      dockSystem.className = 'dock__v is-warn';
+      dockSystem.title = 'Click to connect a Heritage Backend API URL';
+      dockIndex.textContent = '—';
+      setHealthPanel(null);
+      return;
+    }
+
     if (!health) {
       dockSystem.textContent = 'Backend offline';
       dockSystem.className = 'dock__v is-err';
+      dockSystem.title = 'Target: ' + API_BASE + ' (Click to configure)';
       dockIndex.textContent = '—';
       setHealthPanel(null);
       return;
@@ -1357,6 +1408,7 @@
     var ok = health.service_ready && health.status === 'ok';
     dockSystem.textContent = ok ? 'Ready' : (health.status || 'Degraded');
     dockSystem.className = 'dock__v ' + (ok ? 'is-ok' : 'is-warn');
+    dockSystem.title = 'Backend online: ' + API_BASE;
     dockIndex.textContent = typeof health.index_size === 'number' ? String(health.index_size) : '—';
     setHealthPanel(health);
   }
@@ -1615,6 +1667,16 @@
   function runRecognition() {
     if (!selected || busy) return;
 
+    if (!API_BASE) {
+      clearStageTimers();
+      resetPipeline();
+      recStatus.textContent = 'Setup Required';
+      recStatus.className = 'recognition-actions__status is-err';
+      resultRegion.innerHTML = '';
+      resultRegion.appendChild(errorPanel('This frontend is hosted on Vercel, but no backend API is connected yet. Enter your backend URL below to connect.', true));
+      return;
+    }
+
     busy = true;
     recognizeBtn.disabled = true;
     uploadZone.classList.add('is-busy');
@@ -1672,14 +1734,15 @@
         // A fetch() network failure rejects with a TypeError and carries no
         // status, so it is matched by type rather than by status code.
         var offline = err instanceof TypeError || (err && err.status === 0);
+        var targetHint = API_BASE ? (' at ' + API_BASE) : '';
         var message = ERROR_MESSAGES[code] ||
           (offline
-            ? 'The recognition service could not be reached. Is the backend running on port 8000?'
+            ? 'The recognition service could not be reached' + targetHint + '. Is your backend running and reachable?'
             : 'Recognition could not be completed. Please try again.');
         recStatus.textContent = 'Failed';
         recStatus.className = 'recognition-actions__status is-err';
         resultRegion.innerHTML = '';
-        resultRegion.appendChild(errorPanel(message));
+        resultRegion.appendChild(errorPanel(message, offline));
 
         trackEvent('recognition_failed', {
           code: code || 'network_error',
@@ -1693,11 +1756,111 @@
       });
   }
 
-  function errorPanel(message) {
+  function renderApiConnector() {
+    var box = el('div', 'api-connector');
+    var title = el('div', 'api-connector__title', 'Connect Backend API');
+    var desc = el('p', 'api-connector__desc',
+      'The frontend is active on Vercel. Monument recognition with PyTorch & OpenCLIP requires the Python backend. Enter your backend API URL below:');
+
+    var form = el('div', 'api-connector__form');
+    var input = el('input', 'api-connector__input');
+    input.type = 'url';
+    input.placeholder = 'https://your-backend.onrender.com or http://localhost:8000';
+    input.value = API_BASE || '';
+
+    var btn = el('button', 'btn btn--subtle api-connector__btn', 'Connect API');
+    btn.type = 'button';
+
+    var statusEl = el('div', 'api-connector__status');
+
+    var options = el('div', 'api-connector__options');
+    var optLabel = el('span', 'api-connector__options-label', 'Presets:');
+    options.appendChild(optLabel);
+
+    var presets = [
+      { label: 'Local (127.0.0.1:8000)', url: 'http://127.0.0.1:8000' },
+      { label: 'Localhost (8000)', url: 'http://localhost:8000' }
+    ];
+
+    presets.forEach(function (preset) {
+      var optBtn = el('button', 'api-connector__preset-chip', preset.label);
+      optBtn.type = 'button';
+      optBtn.addEventListener('click', function () {
+        input.value = preset.url;
+        testAndSave(preset.url);
+      });
+      options.appendChild(optBtn);
+    });
+
+    function testAndSave(targetUrl) {
+      var clean = (targetUrl || '').trim().replace(/\/$/, '');
+      if (!clean) {
+        statusEl.textContent = 'Please enter a URL.';
+        statusEl.className = 'api-connector__status is-err';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+      statusEl.textContent = 'Testing connection to ' + clean + '/health ...';
+      statusEl.className = 'api-connector__status is-busy';
+
+      fetch(clean + '/health', { mode: 'cors' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          btn.disabled = false;
+          btn.textContent = 'Connected';
+          statusEl.textContent = '✓ Successfully connected! Backend status: ' + (data.status || 'ok') + ' (' + (data.index_size || 0) + ' monuments indexed).';
+          statusEl.className = 'api-connector__status is-ok';
+          setApiBase(clean);
+          if (recognizeBtn && selected) {
+            recognizeBtn.disabled = false;
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.textContent = 'Connect API';
+          var hint = (location.protocol === 'https:' && clean.startsWith('http://'))
+            ? ' Note: This site is loaded over HTTPS. Browsers block unencrypted HTTP (Mixed Content). Use an HTTPS URL (e.g. from ngrok, Render, or Hugging Face).'
+            : ' Ensure the backend is running and CORS is enabled.';
+          statusEl.textContent = '✗ Could not connect to ' + clean + '.' + hint;
+          statusEl.className = 'api-connector__status is-err';
+        });
+    }
+
+    btn.addEventListener('click', function () {
+      testAndSave(input.value);
+    });
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        testAndSave(input.value);
+      }
+    });
+
+    form.appendChild(input);
+    form.appendChild(btn);
+
+    box.appendChild(title);
+    box.appendChild(desc);
+    box.appendChild(form);
+    box.appendChild(statusEl);
+    box.appendChild(options);
+
+    return box;
+  }
+
+  function errorPanel(message, isOffline) {
     var card = el('div', 'result result--unknown');
     var body = el('div', 'result__body');
-    body.appendChild(el('p', 'result__label', 'Recognition unavailable'));
+    body.appendChild(el('p', 'result__label', isOffline ? 'Backend Service Offline' : 'Recognition unavailable'));
     body.appendChild(el('p', 'result__text', message));
+    if (isOffline) {
+      body.appendChild(renderApiConnector());
+    }
     card.appendChild(body);
     return card;
   }
@@ -3143,6 +3306,22 @@
     });
   }
 
+  function initDockConfig() {
+    var dockSystem = $('#dock-system');
+    if (!dockSystem) return;
+    dockSystem.style.cursor = 'pointer';
+    dockSystem.addEventListener('click', function () {
+      var current = API_BASE || '';
+      var entered = window.prompt(
+        'Configure Heritage Backend API URL:\n(e.g., https://your-backend.onrender.com or https://....ngrok-free.app)',
+        current
+      );
+      if (entered !== null) {
+        setApiBase(entered.trim());
+      }
+    });
+  }
+
   /* ── boot ─────────────────────────────────────────────────────────────── */
 
   function init() {
@@ -3160,6 +3339,7 @@
     initUpload();
     initExplorer();
     initLegalAndConsent();
+    initDockConfig();
 
     refreshHealth();
     loadGalleryManifest();

@@ -142,11 +142,13 @@ if not allowed_origins:
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:8080",
+        "https://heritage-swg3.vercel.app",
     ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=os.getenv("ALLOWED_ORIGIN_REGEX", r"^https?://.*"),
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS", "HEAD"],
     allow_headers=["Content-Type", "Accept", "Authorization", "X-Requested-With"],
