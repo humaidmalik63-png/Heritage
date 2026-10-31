@@ -2,7 +2,7 @@
   "name": "Heritage Discovery — Visual Heritage Recognition Platform",
   "short_name": "Heritage Discovery",
   "description": "Automated monument recognition using visual feature embeddings (CLIP ViT-B/32), vector similarity retrieval (FAISS), open-set decision boundaries, and grounded UNESCO architectural evidence.",
-  "start_url": "/#home",
+  "start_url": "./#home",
   "display": "standalone",
   "background_color": "#050608",
   "theme_color": "#050608",
