@@ -112,32 +112,19 @@
     try {
       var stored = localStorage.getItem('heritage_api_base');
       if (stored && stored.trim()) {
-        var cleanStored = stored.trim().replace(/\/$/, '');
-        // On HTTPS pages, do not use dead services (n13o), insecure HTTP, or stale :8000
-        if (cleanStored.includes('heritage-n13o') || (location.protocol === 'https:' && (cleanStored.startsWith('http://') || cleanStored.includes(':8000')))) {
-          try { localStorage.removeItem('heritage_api_base'); } catch (_) {}
-        } else {
-          return cleanStored;
-        }
+        return stored.trim().replace(/\/$/, '');
       }
     } catch (_) {}
 
     var attr = (document.documentElement.getAttribute('data-api-base') || '').trim();
     if (attr) return attr.replace(/\/$/, '');
 
-    try {
-      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) {
-        var envBase = String(import.meta.env.VITE_API_BASE).trim();
-        if (envBase && !envBase.includes('heritage-n13o')) return envBase.replace(/\/$/, '');
-      }
-    } catch (_) {}
-
-    if (location.protocol === 'file:') return 'http://localhost:8000';
+    // Default to local FastAPI backend on port 8000
+    if (location.protocol === 'file:') return 'http://127.0.0.1:8000';
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       return location.protocol + '//' + location.hostname + ':8000';
     }
-    // Remote host (e.g. Vercel): default to the user's live Render cloud backend
-    return 'https://heritage-1-why4.onrender.com';
+    return 'http://127.0.0.1:8000';
   }
 
   var API_BASE = resolveInitialApiBase();
@@ -2022,12 +2009,12 @@
     var box = el('div', 'api-connector');
     var title = el('div', 'api-connector__title', 'Connect Backend API');
     var desc = el('p', 'api-connector__desc',
-      'The frontend is active on Vercel. Monument recognition with PyTorch & OpenCLIP requires the Python backend. Enter your backend API URL below:');
+      'Monument recognition with PyTorch & OpenCLIP requires the Python backend running on localhost:8000.');
 
     var form = el('div', 'api-connector__form');
     var input = el('input', 'api-connector__input');
     input.type = 'url';
-    input.placeholder = 'https://your-backend.onrender.com or http://localhost:8000';
+    input.placeholder = 'http://127.0.0.1:8000 or http://localhost:8000';
     input.value = API_BASE || '';
 
     var btn = el('button', 'btn btn--subtle api-connector__btn', 'Connect API');
@@ -2040,7 +2027,6 @@
     options.appendChild(optLabel);
 
     var presets = [
-      { label: 'Render Cloud (Live)', url: 'https://heritage-1-why4.onrender.com' },
       { label: 'Local (127.0.0.1:8000)', url: 'http://127.0.0.1:8000' },
       { label: 'Localhost (8000)', url: 'http://localhost:8000' }
     ];
@@ -3576,7 +3562,7 @@
     dockSystem.addEventListener('click', function () {
       var current = API_BASE || '';
       var entered = window.prompt(
-        'Configure Heritage Backend API URL:\n(e.g., https://your-backend.onrender.com or https://....ngrok-free.app)',
+        'Configure Heritage Backend API URL:\n(e.g., http://127.0.0.1:8000 or http://localhost:8000)',
         current
       );
       if (entered !== null) {
