@@ -302,6 +302,8 @@
       <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
       <input type="file" id="file-input" class="visually-hidden"
              accept="image/jpeg,image/jpg,image/png,image/webp" />
+      <input type="file" id="camera-input" class="visually-hidden"
+             accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" />
       <div class="upload__idle" id="upload-idle">
         <div class="upload__icon" aria-hidden="true">
           <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1">
@@ -310,8 +312,24 @@
           </svg>
         </div>
         <p class="upload__title">Drop a photograph here</p>
-        <p class="upload__hint">or <span class="upload__link">browse files</span> — JPG, PNG or WebP, up to 10&nbsp;MB</p>
-        <button type="button" class="btn btn--ghost btn--sm" id="upload-browse">Select Image</button>
+        <p class="upload__hint">or choose an image option below &mdash; JPG, PNG or WebP, up to 10&nbsp;MB</p>
+        <div class="upload__idle-actions">
+          <button type="button" class="btn btn--ghost btn--sm" id="upload-browse">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Select Image
+          </button>
+          <button type="button" class="btn btn--ghost btn--sm" id="upload-camera">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Take Photo
+          </button>
+        </div>
       </div>
 
       <div class="upload__preview" id="upload-preview" hidden>
@@ -323,6 +341,13 @@
           <p class="upload__name" id="preview-name">—</p>
           <p class="upload__size" id="preview-size">—</p>
           <div class="upload__actions">
+            <button type="button" class="btn btn--ghost btn--sm" id="retake-btn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Retake Photo
+            </button>
             <button type="button" class="btn btn--ghost btn--sm" id="replace-btn">Replace</button>
             <button type="button" class="btn btn--quiet btn--sm" id="remove-btn">Remove</button>
           </div>
@@ -596,6 +621,46 @@
     <div class="modal-foot">
       <p class="modal-notice">Draft notice prepared for academic demonstration. Subject to human legal review prior to commercial deployment.</p>
       <button type="button" class="btn btn--ghost btn--sm" data-close-modal="legal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ live camera capture modal ════════════════════════════════════════ -->
+<div class="modal-overlay" id="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-modal-title" hidden>
+  <div class="modal-scrim" id="camera-backdrop"></div>
+  <div class="modal-card modal-card--camera arch-frame">
+    <span class="arch-corner arch-corner--tl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--tr" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--bl" aria-hidden="true"></span>
+    <span class="arch-corner arch-corner--br" aria-hidden="true"></span>
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow"><span class="eyebrow__tick" aria-hidden="true"></span>Visual Capture</p>
+        <h2 class="modal-title" id="camera-modal-title">Live Camera Capture</h2>
+      </div>
+      <button type="button" class="modal-close" id="camera-close" aria-label="Close camera">&times;</button>
+    </div>
+    <div class="modal-body modal-body--camera">
+      <div class="camera-viewport">
+        <video id="camera-video" playsinline autoplay muted></video>
+        <div class="camera-reticle" aria-hidden="true">
+          <span class="camera-reticle__corner tl"></span>
+          <span class="camera-reticle__corner tr"></span>
+          <span class="camera-reticle__corner bl"></span>
+          <span class="camera-reticle__corner br"></span>
+          <span class="camera-reticle__crosshair"></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot modal-foot--camera">
+      <button type="button" class="btn btn--quiet btn--sm" id="camera-cancel">Cancel</button>
+      <button type="button" class="btn btn--primary" id="camera-snap">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/>
+          <circle cx="12" cy="12" r="4" fill="currentColor"/>
+        </svg>
+        Capture Photo
+      </button>
     </div>
   </div>
 </div>

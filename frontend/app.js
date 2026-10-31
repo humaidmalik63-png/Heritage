@@ -46,10 +46,16 @@
     return (isMobile && item.mobilePosition) ? item.mobilePosition : (item.position || '50% 50%');
   }
 
-  // Controller hook allowing manual cues from chapter controls without timer lock-in
+  // Global pause state for the entire seven-screen / hero experience
+  var isExperiencePaused = false;
+
+  // Controller hook allowing manual cues and pause/resume coordination across slideshow & chapters
   var slideshowController = {
     cueSlide: function () {},
-    getCurrentIndex: function () { return 0; }
+    getCurrentIndex: function () { return 0; },
+    pause: function () {},
+    resume: function () {},
+    isPaused: function () { return isExperiencePaused; }
   };
 
   // ── Phase 7: Deliberate Image-to-Chapter Mapping Configuration ────────────
@@ -71,6 +77,7 @@
   }, { passive: true });
 
   function isExperienceSuspended() {
+    if (isExperiencePaused) return true;
     if (document.hidden) return true;
     if (current === 'detail') return true;
 
@@ -121,7 +128,7 @@
     try {
       if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) {
         var envBase = String(import.meta.env.VITE_API_BASE).trim();
-        if (envBase) return envBase.replace(/\/$/, '');
+        if (envBase && !envBase.includes('heritage-n13o')) return envBase.replace(/\/$/, '');
       }
     } catch (_) {}
 
@@ -663,7 +670,7 @@
     var isNarrativeTransitioning = false;
 
     function shouldSuspend() {
-      if (isUserPaused || isHoverPaused) return true;
+      if (isExperiencePaused || isUserPaused || isHoverPaused) return true;
       return isExperienceSuspended();
     }
 
@@ -733,21 +740,24 @@
     }
 
     function advance() {
-      if (shouldSuspend() || isNarrativeTransitioning) {
+      if (isExperiencePaused || shouldSuspend() || isNarrativeTransitioning) {
         stopTimer();
-        timer = window.setTimeout(advance, 1500);
         return;
       }
 
       var next = (currentChapter + 1) % CHAPTERS.length;
       setChapter(next);
-      scheduleNext();
+      if (!isExperiencePaused && !shouldSuspend()) {
+        scheduleNext();
+      }
     }
 
     function scheduleNext() {
       stopTimer();
-      timer = window.setTimeout(advance, CHAPTER_INTERVAL_MS);
-      resetProgress();
+      if (!isExperiencePaused && !shouldSuspend()) {
+        timer = window.setTimeout(advance, CHAPTER_INTERVAL_MS);
+        resetProgress();
+      }
     }
 
     function stopTimer() {
@@ -760,9 +770,9 @@
 
     function resetProgress() {
       if (!progressBar) return;
-      progressBar.classList.remove('is-animating');
+      progressBar.classList.remove('is-animating', 'is-paused');
       progressBar.style.width = '0%';
-      if (reducedMotion() || shouldSuspend()) return;
+      if (reducedMotion() || shouldSuspend() || isExperiencePaused) return;
       window.requestAnimationFrame(function () {
         progressBar.classList.add('is-animating');
       });
@@ -771,23 +781,55 @@
     function stopProgress() {
       if (!progressBar) return;
       progressBar.classList.remove('is-animating');
-      progressBar.style.width = '0%';
+      if (isExperiencePaused) {
+        progressBar.classList.add('is-paused');
+      } else {
+        progressBar.classList.remove('is-paused');
+        progressBar.style.width = '0%';
+      }
     }
 
     function updatePlayButtonUI() {
       if (!btnToggle) return;
       var iconPause = btnToggle.querySelector('.icon-pause');
       var iconPlay = btnToggle.querySelector('.icon-play');
-      if (isUserPaused) {
+      var heroEl = $('#hero');
+      if (isExperiencePaused) {
         if (iconPause) iconPause.setAttribute('hidden', '');
         if (iconPlay) iconPlay.removeAttribute('hidden');
         btnToggle.setAttribute('aria-label', 'Resume automatic chapter progression');
         btnToggle.setAttribute('title', 'Resume automatic chapter progression');
+        btnToggle.classList.add('is-paused');
+        if (heroEl) heroEl.classList.add('is-paused');
       } else {
         if (iconPause) iconPause.removeAttribute('hidden');
         if (iconPlay) iconPlay.setAttribute('hidden', '');
         btnToggle.setAttribute('aria-label', 'Pause automatic chapter progression');
         btnToggle.setAttribute('title', 'Pause automatic chapter progression');
+        btnToggle.classList.remove('is-paused');
+        if (heroEl) heroEl.classList.remove('is-paused');
+      }
+    }
+
+    function togglePause() {
+      isExperiencePaused = !isExperiencePaused;
+      isUserPaused = isExperiencePaused;
+      updatePlayButtonUI();
+      if (isExperiencePaused) {
+        stopTimer();
+        if (slideshowController.pause) slideshowController.pause();
+        if (progressBar) {
+          var curWidth = window.getComputedStyle(progressBar).width;
+          progressBar.classList.remove('is-animating');
+          progressBar.style.width = curWidth;
+          progressBar.classList.add('is-paused');
+        }
+      } else {
+        if (progressBar) {
+          progressBar.classList.remove('is-paused');
+        }
+        scheduleNext();
+        if (slideshowController.resume) slideshowController.resume();
       }
     }
 
@@ -810,72 +852,75 @@
             history.replaceState(null, '', '#' + navMap[index]);
           }
         }
-        if (!isUserPaused) scheduleNext();
+        if (!isExperiencePaused) scheduleNext();
       });
     });
 
     // Manual navigation: Previous & Next buttons
     if (btnPrev) {
-      btnPrev.addEventListener('click', function () {
+      btnPrev.addEventListener('click', function (e) {
+        if (e) e.preventDefault();
         var prev = (currentChapter - 1 + CHAPTERS.length) % CHAPTERS.length;
         setChapter(prev);
         var mappedImage = CHAPTER_IMAGE_MAP[prev];
         if (typeof mappedImage === 'number' && slideshowController.cueSlide) {
           slideshowController.cueSlide(mappedImage);
         }
-        if (!isUserPaused) scheduleNext();
+        if (!isExperiencePaused) scheduleNext();
       });
     }
 
     if (btnNext) {
-      btnNext.addEventListener('click', function () {
+      btnNext.addEventListener('click', function (e) {
+        if (e) e.preventDefault();
         var next = (currentChapter + 1) % CHAPTERS.length;
         setChapter(next);
         var mappedImage = CHAPTER_IMAGE_MAP[next];
         if (typeof mappedImage === 'number' && slideshowController.cueSlide) {
           slideshowController.cueSlide(mappedImage);
         }
-        if (!isUserPaused) scheduleNext();
+        if (!isExperiencePaused) scheduleNext();
       });
     }
 
     if (btnToggle) {
-      btnToggle.addEventListener('click', function () {
-        isUserPaused = !isUserPaused;
-        updatePlayButtonUI();
-        if (isUserPaused) {
-          stopTimer();
-        } else {
-          scheduleNext();
+      btnToggle.addEventListener('click', function (e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
         }
+        togglePause();
       });
     }
 
-    // Hover pause over chapter controls & reading area
-    var chapterControls = $('.dock__cell--chapter');
-    if (chapterControls) {
-      chapterControls.addEventListener('mouseenter', function () {
-        isHoverPaused = true;
-      });
-      chapterControls.addEventListener('mouseleave', function () {
-        isHoverPaused = false;
-        if (!isUserPaused && !shouldSuspend()) {
-          resetProgress();
-        }
-      });
-    }
+    // Hover pause over chapter controls & reading area (only for pointer devices with hover support)
+    var canHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (canHover) {
+      var chapterControls = $('.dock__cell--chapter');
+      if (chapterControls) {
+        chapterControls.addEventListener('mouseenter', function () {
+          isHoverPaused = true;
+        });
+        chapterControls.addEventListener('mouseleave', function () {
+          isHoverPaused = false;
+          if (!isExperiencePaused && !shouldSuspend()) {
+            resetProgress();
+          }
+        });
+      }
 
-    // Hover pause over hero content while reading
-    if (heroInner) {
-      heroInner.addEventListener('mouseenter', function () {
-        isHoverPaused = true;
-      });
-      heroInner.addEventListener('mouseleave', function () {
-        isHoverPaused = false;
-        if (!isUserPaused && !shouldSuspend()) {
-          resetProgress();
-        }
-      });
+      // Hover pause over hero content while reading
+      if (heroInner) {
+        heroInner.addEventListener('mouseenter', function () {
+          isHoverPaused = true;
+        });
+        heroInner.addEventListener('mouseleave', function () {
+          isHoverPaused = false;
+          if (!isExperiencePaused && !shouldSuspend()) {
+            resetProgress();
+          }
+        });
+      }
     }
 
     // Window scroll listener: pause/resume when entering/leaving hero
@@ -1292,20 +1337,24 @@
     }
 
     function advance() {
-      if (isExperienceSuspended() || isTransitioning || isLoading) {
-        scheduleNext();
+      if (isExperiencePaused || isExperienceSuspended() || isTransitioning || isLoading) {
+        stopTimer();
         return;
       }
 
       var nextIndex = (currentIndex + 1) % SLIDESHOW_CONFIG.length;
       transitionToSlide(nextIndex, function () {
-        scheduleNext();
+        if (!isExperiencePaused && !isExperienceSuspended()) {
+          scheduleNext();
+        }
       });
     }
 
     function scheduleNext() {
       stopTimer();
-      timer = window.setTimeout(advance, SLIDESHOW_INTERVAL_MS);
+      if (!isExperiencePaused && !isExperienceSuspended()) {
+        timer = window.setTimeout(advance, SLIDESHOW_INTERVAL_MS);
+      }
     }
 
     function stopTimer() {
@@ -1315,11 +1364,29 @@
       }
     }
 
-    // Expose controller for deliberate manual cues without resetting slideshow interval
+    // Expose controller for pause/resume and manual cues without timer conflicts
+    slideshowController.pause = function () {
+      stopTimer();
+    };
+
+    slideshowController.resume = function () {
+      if (!isExperiencePaused && !isExperienceSuspended()) {
+        scheduleNext();
+      }
+    };
+
+    slideshowController.isPaused = function () {
+      return isExperiencePaused;
+    };
+
     slideshowController.cueSlide = function (targetIndex) {
       if (typeof targetIndex !== 'number') return;
       if (targetIndex === currentIndex || isTransitioning || isLoading) return;
-      transitionToSlide(targetIndex, null);
+      transitionToSlide(targetIndex, function () {
+        if (!isExperiencePaused && !isExperienceSuspended()) {
+          scheduleNext();
+        }
+      });
     };
 
     slideshowController.getCurrentIndex = function () {
@@ -1460,13 +1527,16 @@
 
   /* ── upload ───────────────────────────────────────────────────────────── */
 
-  var fileInput, uploadZone, uploadIdle, uploadPreview, previewImg, previewName, previewSize;
+  var fileInput, cameraInput, uploadZone, uploadIdle, uploadPreview, previewImg, previewName, previewSize;
   var recognizeBtn, recStatus, uploadError, resultRegion;
+  var cameraModal, cameraVideo, cameraSnapBtn, cameraCloseBtn, cameraCancelBtn;
+  var activeMediaStream = null;
   var selected = null;          // { file, dataUrl, name, size }
   var busy = false;
 
   function initUpload() {
     fileInput = $('#file-input');
+    cameraInput = $('#camera-input');
     uploadZone = $('#upload-zone');
     uploadIdle = $('#upload-idle');
     uploadPreview = $('#upload-preview');
@@ -1477,6 +1547,11 @@
     recStatus = $('#rec-status');
     uploadError = $('#upload-error');
     resultRegion = $('#result-region');
+    cameraModal = $('#camera-modal');
+    cameraVideo = $('#camera-video');
+    cameraSnapBtn = $('#camera-snap');
+    cameraCloseBtn = $('#camera-close');
+    cameraCancelBtn = $('#camera-cancel');
 
     // clicking anywhere on the zone opens the picker, except the buttons,
     // which have their own handlers below
@@ -1498,6 +1573,20 @@
       ev.stopPropagation();
       fileInput.click();
     });
+    var uploadCameraBtn = $('#upload-camera');
+    if (uploadCameraBtn) {
+      uploadCameraBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        triggerCameraCapture();
+      });
+    }
+    var retakeBtn = $('#retake-btn');
+    if (retakeBtn) {
+      retakeBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        triggerCameraCapture();
+      });
+    }
     $('#replace-btn').addEventListener('click', function (ev) {
       ev.stopPropagation();
       fileInput.click();
@@ -1510,6 +1599,25 @@
     fileInput.addEventListener('change', function () {
       if (fileInput.files && fileInput.files[0]) acceptFile(fileInput.files[0]);
       fileInput.value = '';
+    });
+
+    if (cameraInput) {
+      cameraInput.addEventListener('change', function () {
+        if (cameraInput.files && cameraInput.files[0]) acceptFile(cameraInput.files[0]);
+        cameraInput.value = '';
+      });
+    }
+
+    if (cameraCloseBtn) cameraCloseBtn.addEventListener('click', closeCameraModal);
+    if (cameraCancelBtn) cameraCancelBtn.addEventListener('click', closeCameraModal);
+    var cameraBackdrop = $('#camera-backdrop');
+    if (cameraBackdrop) cameraBackdrop.addEventListener('click', closeCameraModal);
+    if (cameraSnapBtn) cameraSnapBtn.addEventListener('click', captureFrameFromVideo);
+
+    window.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && cameraModal && !cameraModal.hidden) {
+        closeCameraModal();
+      }
     });
 
     ['dragenter', 'dragover'].forEach(function (name) {
@@ -1539,6 +1647,131 @@
     });
 
     recognizeBtn.addEventListener('click', runRecognition);
+  }
+
+  function triggerCameraCapture() {
+    showUploadError('');
+    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                   (window.matchMedia && window.matchMedia('(max-width: 768px)').matches && 'ontouchstart' in window);
+
+    // On mobile devices, prefer native capture via <input type="file" capture="environment">
+    if (isMobile) {
+      if (cameraInput) {
+        cameraInput.click();
+        return;
+      }
+    }
+
+    // On desktop or when getUserMedia is supported, launch the live viewfinder modal
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      openCameraModal();
+    } else {
+      if (cameraInput) cameraInput.click();
+      else if (fileInput) fileInput.click();
+    }
+  }
+
+  function openCameraModal() {
+    if (!cameraModal || !cameraVideo) return;
+    cameraModal.hidden = false;
+    if (cameraSnapBtn) cameraSnapBtn.disabled = true;
+
+    var constraints = {
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920, max: 2560 },
+        height: { ideal: 1080, max: 1440 }
+      }
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(function (stream) {
+        activeMediaStream = stream;
+        cameraVideo.srcObject = stream;
+        cameraVideo.play().then(function () {
+          if (cameraSnapBtn) cameraSnapBtn.disabled = false;
+        }).catch(function () {
+          if (cameraSnapBtn) cameraSnapBtn.disabled = false;
+        });
+      })
+      .catch(function (err) {
+        closeCameraModal();
+        var msg = 'Camera access is unavailable or was denied. Opening file selector instead.';
+        if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+          msg = 'Camera permission was denied. Select a photo file from your device instead.';
+        }
+        showUploadError(msg);
+        if (fileInput) fileInput.click();
+      });
+  }
+
+  function closeCameraModal() {
+    if (activeMediaStream) {
+      activeMediaStream.getTracks().forEach(function (track) {
+        track.stop();
+      });
+      activeMediaStream = null;
+    }
+    if (cameraVideo) {
+      cameraVideo.pause();
+      cameraVideo.srcObject = null;
+    }
+    if (cameraModal) {
+      cameraModal.hidden = true;
+    }
+  }
+
+  function captureFrameFromVideo() {
+    if (!cameraVideo || !activeMediaStream) return;
+    try {
+      var vw = cameraVideo.videoWidth || 1280;
+      var vh = cameraVideo.videoHeight || 720;
+      var canvas = document.createElement('canvas');
+      canvas.width = vw;
+      canvas.height = vh;
+      var ctx = canvas.getContext('2d');
+      if (!ctx) {
+        closeCameraModal();
+        showUploadError('Canvas rendering context unavailable.');
+        return;
+      }
+      ctx.drawImage(cameraVideo, 0, 0, vw, vh);
+
+      // Cleanly stop video tracks immediately to turn off camera hardware
+      closeCameraModal();
+
+      if (canvas.toBlob) {
+        canvas.toBlob(function (blob) {
+          if (!blob) {
+            showUploadError('Failed to capture frame from camera.');
+            return;
+          }
+          var filename = 'monument-camera-' + Date.now() + '.jpg';
+          var file = new File([blob], filename, { type: 'image/jpeg', lastModified: Date.now() });
+          acceptFile(file);
+        }, 'image/jpeg', 0.92);
+      } else {
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        downscale(dataUrl).then(function (payload) {
+          var mockFile = { name: 'monument-camera.jpg', size: Math.round(dataUrl.length * 0.75), type: 'image/jpeg' };
+          selected = { file: mockFile, dataUrl: payload, name: mockFile.name, size: mockFile.size };
+          previewImg.src = payload;
+          previewName.textContent = mockFile.name;
+          previewSize.textContent = bytes(selected.size) + ' · CAMERA CAPTURE';
+          uploadIdle.hidden = true;
+          uploadPreview.hidden = false;
+          recognizeBtn.disabled = false;
+          recStatus.textContent = 'Ready to run';
+          recStatus.className = 'recognition-actions__status';
+          resultRegion.innerHTML = '';
+          resetPipeline();
+        });
+      }
+    } catch (err) {
+      closeCameraModal();
+      showUploadError('Error capturing camera image: ' + err.message);
+    }
   }
 
   function showUploadError(message) {
