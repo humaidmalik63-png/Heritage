@@ -106,8 +106,8 @@
       var stored = localStorage.getItem('heritage_api_base');
       if (stored && stored.trim()) {
         var cleanStored = stored.trim().replace(/\/$/, '');
-        // On HTTPS pages, do not use insecure HTTP or stale :8000 from localStorage
-        if (location.protocol === 'https:' && (cleanStored.startsWith('http://') || cleanStored.includes(':8000'))) {
+        // On HTTPS pages, do not use dead services (n13o), insecure HTTP, or stale :8000
+        if (cleanStored.includes('heritage-n13o') || (location.protocol === 'https:' && (cleanStored.startsWith('http://') || cleanStored.includes(':8000')))) {
           try { localStorage.removeItem('heritage_api_base'); } catch (_) {}
         } else {
           return cleanStored;
