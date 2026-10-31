@@ -104,7 +104,15 @@
   function resolveInitialApiBase() {
     try {
       var stored = localStorage.getItem('heritage_api_base');
-      if (stored && stored.trim()) return stored.trim().replace(/\/$/, '');
+      if (stored && stored.trim()) {
+        var cleanStored = stored.trim().replace(/\/$/, '');
+        // On HTTPS pages, do not use insecure HTTP or stale :8000 from localStorage
+        if (location.protocol === 'https:' && (cleanStored.startsWith('http://') || cleanStored.includes(':8000'))) {
+          try { localStorage.removeItem('heritage_api_base'); } catch (_) {}
+        } else {
+          return cleanStored;
+        }
+      }
     } catch (_) {}
 
     var attr = (document.documentElement.getAttribute('data-api-base') || '').trim();
@@ -1360,23 +1368,44 @@
   /* ── health ───────────────────────────────────────────────────────────── */
 
   var health = null;
+  var healthTimer = null;
+  var isCheckingHealth = false;
 
-  function refreshHealth() {
+  function refreshHealth(silent) {
     if (!API_BASE) {
       health = null;
       paintHealth();
       return Promise.resolve(null);
     }
+    if (isCheckingHealth) return Promise.resolve(health);
+    isCheckingHealth = true;
+
+    var dockSystem = $('#dock-system');
+    if (dockSystem && !health && !silent) {
+      dockSystem.textContent = 'Connecting...';
+      dockSystem.className = 'dock__v is-warn';
+    }
+
     return fetch(API_BASE + '/health')
       .then(function (res) { return res.ok ? res.json() : null; })
       .then(function (data) {
+        isCheckingHealth = false;
         health = data;
         paintHealth();
+        if (healthTimer) { clearTimeout(healthTimer); healthTimer = null; }
         return data;
       })
       .catch(function () {
+        isCheckingHealth = false;
         health = null;
         paintHealth();
+        // Render free tier sleeps after 15 min; auto-retry every 5s during cold-start!
+        if (!healthTimer) {
+          healthTimer = setTimeout(function () {
+            healthTimer = null;
+            refreshHealth(true);
+          }, 5000);
+        }
         return null;
       });
   }
@@ -1397,9 +1426,9 @@
     }
 
     if (!health) {
-      dockSystem.textContent = 'Backend offline';
+      dockSystem.textContent = isCheckingHealth ? 'Connecting...' : 'Backend asleep / offline';
       dockSystem.className = 'dock__v is-err';
-      dockSystem.title = 'Target: ' + API_BASE + ' (Click to configure)';
+      dockSystem.title = 'Target: ' + API_BASE + ' (Click to configure or wait for Render spin-up)';
       dockIndex.textContent = '—';
       setHealthPanel(null);
       return;
