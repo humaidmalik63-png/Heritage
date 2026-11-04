@@ -248,6 +248,17 @@ st.markdown('<div class="sub-header">Identify cultural monuments from query phot
 try:
     service = load_heritage_service()
     service_ready = True
+    # Ensure Gemini client always holds active API key from secrets/environment
+    active_key = os.getenv("GEMINI_API_KEY")
+    if not active_key:
+        try:
+            active_key = st.secrets.get("GEMINI_API_KEY")
+            if active_key:
+                os.environ["GEMINI_API_KEY"] = active_key
+        except Exception:
+            pass
+    if active_key and getattr(service, "gemini_client", None):
+        service.gemini_client.api_key = active_key
 except Exception as e:
     st.error(f"Heritage Service failed to initialize: {e}")
     service_ready = False
@@ -512,7 +523,14 @@ with tab_studio_console:
                     st.warning("The external recognition service is temporarily unavailable. Your photograph has been preserved. Please try again shortly.")
                     st.caption(f"Local Similarity: {sim:.4f} (Threshold: 0.8500). Status: 503 Service Unavailable after bounded backoff.")
 
-                # ── 4. Genuine Inconclusive / Safe Rejection ──
+                # ── 4. Missing API Key ──
+                elif status == "external_auth_error":
+                    st.markdown('<div class="badge-unavailable">API Key Required</div>', unsafe_allow_html=True)
+                    st.subheader("External Fallback Authentication Required")
+                    st.warning("Local recognition correctly identified that this image is not in the 6 indexed catalogue sites. To identify global monuments (like the Colosseum or Hawa Mahal), please ensure your GEMINI_API_KEY is configured in Streamlit Secrets.")
+                    st.caption(f"Local Similarity: {sim:.4f} (Threshold: 0.8500). Reason: {data.get('reason')}")
+
+                # ── 5. Genuine Inconclusive / Safe Rejection ──
                 else:
                     st.markdown('<div class="badge-unknown">Identification Declined</div>', unsafe_allow_html=True)
                     st.subheader("Inconclusive Visual Match")
@@ -522,6 +540,8 @@ with tab_studio_console:
                         st.markdown(f'<div class="metric-card"><div class="metric-card-val">{sim:.4f}</div><div class="metric-card-lbl">Highest Local Match</div></div>', unsafe_allow_html=True)
                     with m2:
                         st.markdown('<div class="metric-card"><div class="metric-card-val">Insufficient</div><div class="metric-card-lbl">Evidence Tier</div></div>', unsafe_allow_html=True)
+                    if data.get("reason"):
+                        st.caption(f"Reason: {data.get('reason')}")
 
         elif not execute_btn:
             st.markdown(r"""
