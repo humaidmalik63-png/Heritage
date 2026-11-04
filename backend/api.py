@@ -167,6 +167,12 @@ app.add_middleware(
     allow_headers=["Content-Type", "Accept", "Authorization", "X-Requested-With"],
 )
 
+from starlette.staticfiles import StaticFiles
+
+_frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+if _frontend_dir.exists():
+    app.mount("/frontend", StaticFiles(directory=str(_frontend_dir), html=True), name="frontend")
+
 # Populated by get_service() on first use.
 _service: Optional[HeritageService] = None
 

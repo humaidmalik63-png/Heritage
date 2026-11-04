@@ -2071,6 +2071,23 @@
 
     var payload = { image_base64: selected.dataUrl, question: '', top_k: 5 };
 
+    // If running inside a Streamlit component iframe, notify Streamlit in-process backend
+    if (window.parent && window.parent !== window) {
+      try {
+        window.parent.postMessage({
+          isStreamlitMessage: true,
+          type: 'streamlit:setComponentValue',
+          value: {
+            action: 'recognize',
+            image_base64: payload.image_base64,
+            question: payload.question,
+            top_k: payload.top_k,
+            timestamp: Date.now()
+          }
+        }, '*');
+      } catch (_) {}
+    }
+
     trackEvent('recognition_started', {
       file_size_bytes: selected.file ? selected.file.size : 0
     });
@@ -3905,6 +3922,40 @@
     loadGalleryManifest();
     loadCatalogue();
     booted = true;
+
+    // Streamlit Component integration & bidirectional message bridge
+    if (window.parent && window.parent !== window) {
+      try {
+        window.parent.postMessage({ isStreamlitMessage: true, type: 'streamlit:componentReady', apiVersion: 1 }, '*');
+        window.parent.postMessage({ isStreamlitMessage: true, type: 'streamlit:setFrameHeight', height: Math.max(920, document.documentElement.scrollHeight) }, '*');
+      } catch (_) {}
+
+      window.addEventListener('message', function (ev) {
+        if (ev.data && ev.data.type === 'streamlit:render') {
+          var args = ev.data.args || {};
+          if (args.recognition_result) {
+            clearStageTimers();
+            if (elapsedInterval) { window.clearInterval(elapsedInterval); elapsedInterval = null; }
+            if (activeWatchdogTimer) { window.clearTimeout(activeWatchdogTimer); activeWatchdogTimer = null; }
+            setStage('evidence');
+            renderResult(args.recognition_result);
+            completePipeline();
+            busy = false;
+            if (recognizeBtn) {
+              recognizeBtn.disabled = false;
+              recognizeBtn.hidden = false;
+            }
+            if (cancelRecBtn) {
+              cancelRecBtn.hidden = true;
+              cancelRecBtn.disabled = true;
+            }
+            if (uploadZone) uploadZone.classList.remove('is-busy');
+            recStatus.textContent = args.recognition_result.confirmed ? 'Complete' : 'Not confirmed';
+            recStatus.className = 'recognition-actions__status';
+          }
+        }
+      });
+    }
 
     // Smooth reveal timeout allowing architectural line art and grid to render
     window.setTimeout(hideLoader, 1100);
