@@ -3971,6 +3971,15 @@
             clearStageTimers();
             if (elapsedInterval) { window.clearInterval(elapsedInterval); elapsedInterval = null; }
             if (activeWatchdogTimer) { window.clearTimeout(activeWatchdogTimer); activeWatchdogTimer = null; }
+            if (args.recognition_result.recognition_status === 'recognition_error') {
+              busy = false;
+              if (recognizeBtn) { recognizeBtn.disabled = false; recognizeBtn.hidden = false; }
+              if (cancelRecBtn) { cancelRecBtn.hidden = true; cancelRecBtn.disabled = true; }
+              if (uploadZone) uploadZone.classList.remove('is-busy');
+              recStatus.textContent = 'Error: ' + (args.recognition_result.reason || 'Recognition failed');
+              recStatus.className = 'recognition-actions__status is-err';
+              return;
+            }
             setStage('evidence');
             renderResult(args.recognition_result);
             completePipeline();

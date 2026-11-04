@@ -167,14 +167,19 @@ class HeritageService:
 
     # ── inputs ───────────────────────────────────────────────────────────────
 
-    def _embed(self, query: Union[str, Path, np.ndarray]) -> np.ndarray:
+    def _embed(self, query: Union[str, Path, np.ndarray, Any]) -> np.ndarray:
         """Turn the caller's query input into a CLIP embedding."""
         if isinstance(query, np.ndarray):
             return query.astype(np.float32).ravel()
 
+        if hasattr(query, "convert") or isinstance(query, bytes):
+            if self.extractor is None:
+                raise RuntimeError("no embedding extractor configured for image queries")
+            return self.extractor.extract(query)
+
         if not isinstance(query, (str, Path)):
             raise TypeError(
-                f"query must be an image path or an embedding, got {type(query).__name__}"
+                f"query must be an image path, data URI, or an embedding, got {type(query).__name__}"
             )
 
         if self.extractor is None:

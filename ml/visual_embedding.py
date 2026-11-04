@@ -12,8 +12,12 @@ rank-candidates retrieval.
 
 from __future__ import annotations
 
+import base64
+import io
 import math
+import os
 from pathlib import Path
+import re
 from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -124,14 +128,31 @@ class VisualEmbeddingExtractor:
         ValueError
             If the image cannot be opened or processed.
         """
-        p = Path(image_path)
-        if not p.exists():
-            raise FileNotFoundError(f"Image not found: {image_path}")
+        if isinstance(image_path, Image.Image):
+            pil_img = image_path.convert("RGB")
+        elif isinstance(image_path, (bytes, bytearray)):
+            try:
+                pil_img = Image.open(io.BytesIO(image_path)).convert("RGB")
+            except Exception as exc:
+                raise ValueError(f"Cannot open image from bytes: {exc}") from exc
+        elif isinstance(image_path, str) and (image_path.startswith("data:") or (len(image_path) > 300 and not os.path.exists(image_path))):
+            raw = image_path
+            if raw.startswith("data:"):
+                _, _, raw = raw.partition(",")
+            try:
+                data = base64.b64decode(raw)
+                pil_img = Image.open(io.BytesIO(data)).convert("RGB")
+            except Exception as exc:
+                raise ValueError(f"Cannot decode base64 image: {exc}") from exc
+        else:
+            p = Path(image_path)
+            if not p.exists():
+                raise FileNotFoundError(f"Image not found: {image_path}")
 
-        try:
-            pil_img = Image.open(p).convert("RGB")
-        except Exception as exc:
-            raise ValueError(f"Cannot open image {image_path}: {exc}") from exc
+            try:
+                pil_img = Image.open(p).convert("RGB")
+            except Exception as exc:
+                raise ValueError(f"Cannot open image {image_path}: {exc}") from exc
 
         _load_model(device=self._device)
         inputs = _state["processor"](images=pil_img, return_tensors="pt")

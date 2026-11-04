@@ -303,6 +303,18 @@ with tab_integrated_app:
                         st.rerun()
                     except Exception as exc:
                         st.error(f"Recognition error: {exc}")
+                        st.session_state["component_rec_result"] = {
+                            "confirmed": False,
+                            "recognition_status": "recognition_error",
+                            "recognition_source": "error",
+                            "reason": str(exc),
+                            "similarity": 0.0,
+                            "margin": 0.0,
+                            "metadata": {},
+                            "evidence": {},
+                            "citations": [],
+                        }
+                        st.rerun()
     else:
         # Fallback to direct iframe if component declaration failed
         st.components.v1.iframe("http://127.0.0.1:8000/frontend/index.html", height=920, scrolling=True)
