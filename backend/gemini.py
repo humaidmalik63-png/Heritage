@@ -483,8 +483,8 @@ def detect_mime_type_and_base64(image: Union[bytes, str, Path]) -> tuple[str, st
 
 def prepare_gemini_image(
     image: Union[bytes, bytearray, str, Path],
-    max_edge: int = 1024,
-    quality: int = 85,
+    max_edge: int = 800,
+    quality: int = 80,
 ) -> Tuple[str, str, int, str]:
     """
     Prepare an optimized, standardized image payload for Gemini Vision fallback.

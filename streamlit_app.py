@@ -523,14 +523,21 @@ with tab_studio_console:
                     st.warning("The external recognition service is temporarily unavailable. Your photograph has been preserved. Please try again shortly.")
                     st.caption(f"Local Similarity: {sim:.4f} (Threshold: 0.8500). Status: 503 Service Unavailable after bounded backoff.")
 
-                # ── 4. Missing API Key ──
+                # ── 4. External Request Timed Out ──
+                elif status == "external_timeout":
+                    st.markdown('<div class="badge-unavailable">Request Timed Out</div>', unsafe_allow_html=True)
+                    st.subheader("External Vision Service Timed Out")
+                    st.warning("Google's Gemini Vision API took longer than expected to analyze this image. Please click 'Execute Monument Recognition' to retry.")
+                    st.caption(f"Local Similarity: {sim:.4f} (Threshold: 0.8500). Reason: {data.get('reason')}")
+
+                # ── 5. Missing API Key ──
                 elif status == "external_auth_error":
                     st.markdown('<div class="badge-unavailable">API Key Required</div>', unsafe_allow_html=True)
                     st.subheader("External Fallback Authentication Required")
                     st.warning("Local recognition correctly identified that this image is not in the 6 indexed catalogue sites. To identify global monuments (like the Colosseum or Hawa Mahal), please ensure your GEMINI_API_KEY is configured in Streamlit Secrets.")
                     st.caption(f"Local Similarity: {sim:.4f} (Threshold: 0.8500). Reason: {data.get('reason')}")
 
-                # ── 5. Genuine Inconclusive / Safe Rejection ──
+                # ── 6. Genuine Inconclusive / Safe Rejection ──
                 else:
                     st.markdown('<div class="badge-unknown">Identification Declined</div>', unsafe_allow_html=True)
                     st.subheader("Inconclusive Visual Match")
