@@ -2097,6 +2097,15 @@
 
     var payload = { image_base64: selected.dataUrl, question: '', top_k: 5 };
 
+    // 75-second watchdog timer: coordinates with backend (60s Gemini + 15s network/processing buffer)
+    activeWatchdogTimer = window.setTimeout(function () {
+      if (busy) {
+        cancelPendingRecognition('timeout');
+        recStatus.textContent = 'Recognition timed out after 75s. Please retry.';
+        recStatus.className = 'recognition-actions__status is-err';
+      }
+    }, FRONTEND_WATCHDOG_MS);
+
     // If running inside a Streamlit component iframe, notify Streamlit in-process backend
     if (window.parent && window.parent !== window) {
       try {
