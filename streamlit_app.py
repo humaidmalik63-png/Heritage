@@ -295,10 +295,24 @@ with tab_integrated_app:
             if b64_image and req_ts != st.session_state.get("last_processed_req_ts"):
                 st.session_state["last_processed_req_ts"] = req_ts
                 with st.spinner("Processing recognition request directly in-process..."):
+                    tmp_file_path = None
                     try:
+                        raw = b64_image
+                        suffix = ".jpg"
+                        if raw.startswith("data:"):
+                            header, _, raw = raw.partition(",")
+                            if "png" in header:
+                                suffix = ".png"
+                            elif "webp" in header:
+                                suffix = ".webp"
+                        img_bytes = base64.b64decode(raw)
+                        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+                            tf.write(img_bytes)
+                            tmp_file_path = tf.name
+
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                        res = loop.run_until_complete(service.recognize_async(b64_image, question=q, top_k=5))
+                        res = loop.run_until_complete(service.recognize_async(tmp_file_path, question=q, top_k=5))
                         st.session_state["component_rec_result"] = res.to_dict()
                         st.rerun()
                     except Exception as exc:
@@ -315,6 +329,12 @@ with tab_integrated_app:
                             "citations": [],
                         }
                         st.rerun()
+                    finally:
+                        if tmp_file_path and os.path.exists(tmp_file_path):
+                            try:
+                                os.unlink(tmp_file_path)
+                            except Exception:
+                                pass
     else:
         # Fallback to direct iframe if component declaration failed
         st.components.v1.iframe("http://127.0.0.1:8000/frontend/index.html", height=920, scrolling=True)
@@ -369,25 +389,33 @@ with tab_studio_console:
         st.markdown("##### Recognition & Grounded Findings")
 
         if query_image is not None and execute_btn and service_ready:
-            # Prepare image for service
-            buf = io.BytesIO()
-            fmt = "PNG" if query_image.format == "PNG" else "JPEG"
-            if query_image.mode not in ("RGB", "L"):
-                query_image = query_image.convert("RGB")
-            query_image.save(buf, format=fmt, quality=85)
-            b64_str = f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
-
+            tmp_query_path = None
             with st.spinner("Evaluating local CLIP embeddings, FAISS distance, and open-set boundaries..."):
                 try:
+                    suffix = ".png" if query_image.format == "PNG" else ".jpg"
+                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+                        if query_image.mode not in ("RGB", "L"):
+                            clean_img = query_image.convert("RGB")
+                        else:
+                            clean_img = query_image
+                        clean_img.save(tf.name, format="PNG" if suffix == ".png" else "JPEG", quality=90)
+                        tmp_query_path = tf.name
+
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     rec_result = loop.run_until_complete(
-                        service.recognize_async(b64_str, question=user_question, top_k=5)
+                        service.recognize_async(tmp_query_path, question=user_question, top_k=5)
                     )
                     data = rec_result.to_dict()
                 except Exception as exc:
                     st.error(f"Recognition pipeline error: {exc}")
                     data = None
+                finally:
+                    if tmp_query_path and os.path.exists(tmp_query_path):
+                        try:
+                            os.unlink(tmp_query_path)
+                        except Exception:
+                            pass
 
             if data:
                 status = data.get("recognition_status")
