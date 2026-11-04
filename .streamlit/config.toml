@@ -13,3 +13,4 @@ maxUploadSize = 10
 
 [browser]
 gatherUsageStats = false
+

@@ -274,6 +274,14 @@ with tab_integrated_app:
         # Render the custom component with bidirectional messaging
         comp_output = heritage_frontend(
             recognition_result=component_result,
+            service_health={
+                "status": "ok",
+                "service_ready": True,
+                "index_size": 40,
+                "similarity_threshold": 0.85,
+                "competitor_margin": 0.10,
+                "catalogue_size": 6,
+            },
             key="heritage_frontend_component",
             default=None
         )

@@ -113,3 +113,4 @@ enableStaticServing = true
 - **API Key Confidentiality**: The API key is stored exclusively in Streamlit Secrets or local `.env`. It is never returned in client HTTP responses, logged, or exposed in the UI.
 - **Local FAISS Index**: 40 canonical vectors with cosine similarity threshold $0.85$ and competitor margin $0.10$.
 - **Fallback Engine**: Triggered strictly on visual ambiguity; bounded single retry with exponential jitter on HTTP 503; zero quota leakage on local rejections.
+
