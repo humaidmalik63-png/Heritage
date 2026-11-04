@@ -290,10 +290,11 @@ with tab_integrated_app:
         if comp_output and isinstance(comp_output, dict) and comp_output.get("action") == "recognize":
             b64_image = comp_output.get("image_base64", "")
             q = comp_output.get("question", "")
-            req_ts = comp_output.get("timestamp")
+            req_id = comp_output.get("req_id") or str(comp_output.get("timestamp"))
 
-            if b64_image and req_ts != st.session_state.get("last_processed_req_ts"):
-                st.session_state["last_processed_req_ts"] = req_ts
+            if b64_image and req_id != st.session_state.get("last_processed_req_id"):
+                st.session_state["last_processed_req_id"] = req_id
+                st.session_state["component_rec_result"] = None
                 with st.spinner("Processing recognition request directly in-process..."):
                     tmp_file_path = None
                     try:
@@ -313,7 +314,9 @@ with tab_integrated_app:
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
                         res = loop.run_until_complete(service.recognize_async(tmp_file_path, question=q, top_k=5))
-                        st.session_state["component_rec_result"] = res.to_dict()
+                        res_dict = res.to_dict()
+                        res_dict["req_id"] = req_id
+                        st.session_state["component_rec_result"] = res_dict
                         st.rerun()
                     except Exception as exc:
                         st.error(f"Recognition error: {exc}")
@@ -327,6 +330,7 @@ with tab_integrated_app:
                             "metadata": {},
                             "evidence": {},
                             "citations": [],
+                            "req_id": req_id,
                         }
                         st.rerun()
                     finally:

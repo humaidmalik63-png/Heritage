@@ -1550,6 +1550,7 @@
   var abortReason = null;
   var activeWatchdogTimer = null;
   var elapsedInterval = null;
+  var currentRequestId = null;
   var FRONTEND_WATCHDOG_MS = 75000; // 75s deadline: allows backend 60s Gemini timeout + 15s network/processing buffer
 
   function cancelPendingRecognition(reason) {
@@ -1961,6 +1962,7 @@
     reader.onload = function () {
       var dataUrl = String(reader.result);
       downscale(dataUrl).then(function (payload) {
+        currentRequestId = null;
         selected = { file: file, dataUrl: payload, name: file.name, size: file.size, isCamera: isFromCamera };
         previewImg.src = payload;
         previewImg.alt = 'Preview of ' + (isFromCamera ? 'captured monument photo' : 'the uploaded image') + ': ' + file.name;
@@ -1988,6 +1990,7 @@
 
   function clearSelection() {
     cancelPendingRecognition();
+    currentRequestId = null;
     selected = null;
     previewImg.removeAttribute('src');
     previewImg.alt = '';
@@ -2096,6 +2099,8 @@
     }, 1000);
 
     var payload = { image_base64: selected.dataUrl, question: '', top_k: 5 };
+    var reqId = 'rec_' + Date.now();
+    currentRequestId = reqId;
 
     // 75-second watchdog timer: coordinates with backend (60s Gemini + 15s network/processing buffer)
     activeWatchdogTimer = window.setTimeout(function () {
@@ -2117,6 +2122,7 @@
             image_base64: payload.image_base64,
             question: payload.question,
             top_k: payload.top_k,
+            req_id: reqId,
             timestamp: Date.now()
           }
         }, '*');
@@ -3977,20 +3983,28 @@
             paintHealth();
           }
           if (args.recognition_result) {
+            var recRes = args.recognition_result;
+            // Never render a stale result from a previous request or startup session
+            if (recRes.req_id && currentRequestId && recRes.req_id !== currentRequestId) {
+              return;
+            }
+            if (!currentRequestId && !busy) {
+              return;
+            }
             clearStageTimers();
             if (elapsedInterval) { window.clearInterval(elapsedInterval); elapsedInterval = null; }
             if (activeWatchdogTimer) { window.clearTimeout(activeWatchdogTimer); activeWatchdogTimer = null; }
-            if (args.recognition_result.recognition_status === 'recognition_error') {
+            if (recRes.recognition_status === 'recognition_error') {
               busy = false;
               if (recognizeBtn) { recognizeBtn.disabled = false; recognizeBtn.hidden = false; }
               if (cancelRecBtn) { cancelRecBtn.hidden = true; cancelRecBtn.disabled = true; }
               if (uploadZone) uploadZone.classList.remove('is-busy');
-              recStatus.textContent = 'Error: ' + (args.recognition_result.reason || 'Recognition failed');
+              recStatus.textContent = 'Error: ' + (recRes.reason || 'Recognition failed');
               recStatus.className = 'recognition-actions__status is-err';
               return;
             }
             setStage('evidence');
-            renderResult(args.recognition_result);
+            renderResult(recRes);
             completePipeline();
             busy = false;
             if (recognizeBtn) {
@@ -4002,7 +4016,7 @@
               cancelRecBtn.disabled = true;
             }
             if (uploadZone) uploadZone.classList.remove('is-busy');
-            recStatus.textContent = args.recognition_result.confirmed ? 'Complete' : 'Not confirmed';
+            recStatus.textContent = recRes.confirmed ? 'Complete' : 'Not confirmed';
             recStatus.className = 'recognition-actions__status';
           }
         }
