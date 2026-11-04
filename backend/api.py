@@ -18,13 +18,20 @@ from collections import defaultdict
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-# Load environment variables from a local .env file (if present) before any
-# service configuration is read.  This is the only place the project loads
-# .env; nothing here hard-codes credentials.
+from pathlib import Path
+
+# Load environment variables from project-root .env (if present) before any
+# service configuration is read.  This ensures variables are reliably found
+# regardless of the process current working directory.
 try:
     from dotenv import load_dotenv
 
-    load_dotenv()
+    _project_root = Path(__file__).resolve().parent.parent
+    _env_file = _project_root / ".env"
+    if _env_file.exists():
+        load_dotenv(dotenv_path=_env_file)
+    else:
+        load_dotenv()
 except ImportError:
     # python-dotenv is optional at runtime — the app still works with
     # variables supplied through the real process environment.
@@ -142,7 +149,13 @@ if not allowed_origins:
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:8080",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:8000",
         "https://heritage-swg3.vercel.app",
+        "https://humaidmalik63-png.github.io",
     ]
 
 app.add_middleware(
@@ -221,6 +234,7 @@ class RecognizeResponse(BaseModel):
     confirmed: bool = False
     decision: str
     recognition_source: str = "local"
+    recognition_status: Optional[str] = None
     global_identification: Optional[Dict[str, Any]] = None
     top_k: int
     matches: list
@@ -357,6 +371,18 @@ def health() -> HealthResponse:
         default_top_k=int(service.default_top_k),
         similarity_threshold=float(service.confidence_layer.config.similarity_threshold),
     )
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """Cleanly close persistent HTTP clients and connection pools upon application shutdown."""
+    global _service
+    if _service is not None and getattr(_service, "gemini_client", None) is not None:
+        try:
+            await _service.gemini_client.close()
+            logger.info("Gemini HTTP client connection pool closed cleanly.")
+        except Exception as exc:
+            logger.warning("Error closing Gemini HTTP client on shutdown: %s", exc)
 
 
 @app.post("/recognize", response_model=RecognizeResponse)

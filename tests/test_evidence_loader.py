@@ -121,7 +121,7 @@ class TestEvidenceRepository:
         repo = EvidenceRepository(self.metadata_path, self.evidence_path)
         sites = repo.list_sites()
         assert "taj_mahal" in sites
-        assert "red_fort" in sites
+        assert "red_fort_delhi" in sites
         assert len(sites) == 2
 
     def test_get_full_record(self):

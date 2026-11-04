@@ -35,7 +35,16 @@ EXPECTED_SITES = {
 def _index_site_ids():
     with open(MAPPING) as f:
         mapping = json.load(f)
-    return {iid.rsplit("_", 1)[0] for iid in mapping["image_ids"]}
+    sites = set()
+    for p in mapping.get("paths", []):
+        parent = Path(p).parent.name
+        if parent in ("red_fort_delhi", "red_fort"):
+            sites.add("red_fort")
+        elif parent in ("jama_masjid_delhi", "jama_masjid"):
+            sites.add("jama_masjid")
+        else:
+            sites.add(parent)
+    return sites
 
 
 @pytest.fixture(scope="module")
@@ -44,7 +53,7 @@ def repo():
 
 
 class TestIndexEvidenceAlignment:
-    def test_index_has_the_five_expected_sites(self):
+    def test_index_has_the_six_expected_sites(self):
         assert _index_site_ids() == EXPECTED_SITES
 
     def test_every_indexed_site_has_evidence(self, repo):

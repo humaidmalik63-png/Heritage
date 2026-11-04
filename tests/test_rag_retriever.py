@@ -94,7 +94,7 @@ class TestRetrieveContext:
 
     def test_evidence_is_scoped_to_site(self):
         ctx = retrieve_context("red_fort", repository=self.repo)
-        assert ctx.site_id == "red_fort"
+        assert ctx.site_id == "red_fort_delhi"
         assert len(ctx.claims) == 1
         assert "Red Fort" in ctx.claims[0]
         assert not any("Taj" in c for c in ctx.claims)

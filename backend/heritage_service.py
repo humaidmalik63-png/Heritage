@@ -12,10 +12,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import asyncio
 import concurrent.futures
 import logging
 import os
+from pathlib import Path
 import numpy as np
+
+# Ensure environment variables from project-root .env are loaded
+try:
+    from dotenv import load_dotenv
+
+    _project_root = Path(__file__).resolve().parent.parent
+    _env_file = _project_root / ".env"
+    if _env_file.exists():
+        load_dotenv(dotenv_path=_env_file)
+    else:
+        load_dotenv()
+except ImportError:
+    pass
 
 from data.evidence.loader import EvidenceRepository, load_repository
 from ml.confidence import ConfidenceLayer, RetrievalConfig, build_confidence_layer
@@ -82,6 +97,7 @@ class RecognitionResult:
     # distinguishable.  ``None`` when nothing was confirmed.
     confidence: Optional[float] = None
     margin: Optional[float] = None
+    recognition_status: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -93,6 +109,7 @@ class RecognitionResult:
             "confirmed": self.confirmed,
             "decision": self.decision,
             "recognition_source": self.recognition_source,
+            "recognition_status": self.recognition_status,
             "global_identification": dict(self.global_identification) if self.global_identification else None,
             "top_k": self.top_k,
             "matches": list(self.matches),
@@ -262,6 +279,7 @@ class HeritageService:
             confirmed=decision.confirmed,
             decision="match" if decision.confirmed else "unknown",
             recognition_source="local" if decision.confirmed else "unknown",
+            recognition_status="local_confirmed" if decision.confirmed else "inconclusive",
             # Raw CLIP cosine similarity for local candidate
             confidence=top_similarity if decision.confirmed else None,
             global_identification=None,
@@ -345,6 +363,7 @@ class HeritageService:
 
         # 1. Local match accepted: return the local result directly
         if result.confident and result.confirmed:
+            result.recognition_status = "local_confirmed"
             return result
 
         # 2. Local match rejected: call Gemini vision fallback if image is available
@@ -352,8 +371,13 @@ class HeritageService:
             try:
                 gemini_res = await self.gemini_client.identify_monument(query)
                 # Only accept the global identification when Gemini reports a
-                # GENUINE heritage monument and not unknown.
-                if not gemini_res.unknown and gemini_res.identified and gemini_res.is_heritage:
+                # GENUINE heritage monument and not unknown, with verified visual category.
+                if (
+                    not gemini_res.unknown
+                    and gemini_res.identified
+                    and gemini_res.is_heritage
+                    and getattr(gemini_res, "visual_category", "clearly_identifiable_heritage") == "clearly_identifiable_heritage"
+                ):
                     # Model found a plausible identification:
                     # Mark source as "gemini", keep separate from local FAISS matches,
                     # and do NOT mark as independently confirmed.
@@ -361,6 +385,7 @@ class HeritageService:
                     result.confirmed = False  # Model proposal: not independently verified against local catalogue
                     result.decision = "match"
                     result.recognition_source = "gemini"
+                    result.recognition_status = "external_match"
                     result.site_id = "unknown"  # NEVER turn external response into local site_id
                     result.confidence = gemini_res.confidence  # Model-estimated confidence
                     # result.similarity remains the local CLIP cosine score!
@@ -385,16 +410,55 @@ class HeritageService:
                     result.site_id = "unknown"
                     result.decision = "unknown"
                     result.recognition_source = "unknown"
-                    result.global_identification = None
+                    result.global_identification = gemini_res.to_dict() if gemini_res else None
                     result.confidence = None
                     result.citations = []
                     result.answer = None
                     result.is_grounded = False
-                    result.reason = (
-                        REASON_NON_HERITAGE
-                        if gemini_res.explicit_non_heritage
-                        else REASON_LOW_SIMILARITY
-                    )
+
+                    if gemini_res and (
+                        gemini_res.error_type == "service_unavailable"
+                        or getattr(gemini_res, "status", None) == "external_service_unavailable"
+                        or "HTTP 503" in (gemini_res.reason or "")
+                    ):
+                        result.recognition_status = "external_service_unavailable"
+                        result.reason = gemini_res.reason or "Gemini service temporarily unavailable (HTTP 503)"
+                    elif gemini_res and (
+                        gemini_res.error_type == "rate_limited"
+                        or getattr(gemini_res, "status", None) == "external_rate_limited"
+                        or "HTTP 429" in (gemini_res.reason or "")
+                    ):
+                        result.recognition_status = "external_rate_limited"
+                        result.reason = gemini_res.reason or "Gemini rate limit exceeded (HTTP 429)"
+                    elif gemini_res and (
+                        gemini_res.error_type == "timeout"
+                        or getattr(gemini_res, "status", None) == "external_timeout"
+                    ):
+                        result.recognition_status = "external_timeout"
+                        result.reason = gemini_res.reason or "Gemini request timed out"
+                    elif gemini_res and (
+                        gemini_res.error_type == "missing_api_key"
+                        or getattr(gemini_res, "status", None) == "external_auth_error"
+                    ):
+                        result.recognition_status = "external_auth_error"
+                        result.reason = gemini_res.reason or "Gemini API key is not configured"
+                    elif gemini_res and gemini_res.explicit_non_heritage:
+                        result.recognition_status = "non_heritage"
+                        result.reason = gemini_res.visual_evidence or REASON_NON_HERITAGE
+                    else:
+                        result.recognition_status = "inconclusive"
+                        result.reason = (
+                            gemini_res.visual_evidence
+                            if (gemini_res and gemini_res.visual_evidence)
+                            else (
+                                REASON_NON_HERITAGE
+                                if (gemini_res and gemini_res.explicit_non_heritage)
+                                else REASON_LOW_SIMILARITY
+                            )
+                        )
+            except asyncio.CancelledError:
+                logger.info("HeritageService recognize_async cancelled during Gemini fallback")
+                raise
             except Exception as exc:
                 # Failure, timeout, malformed data, or missing credentials
                 logger.warning("Gemini vision fallback failed: %s", type(exc).__name__)
@@ -403,6 +467,7 @@ class HeritageService:
                 result.site_id = "unknown"
                 result.decision = "unknown"
                 result.recognition_source = "unknown"
+                result.recognition_status = "external_service_unavailable" if "503" in str(exc) else "unknown_error"
                 result.global_identification = None
                 result.confidence = None
                 result.citations = []

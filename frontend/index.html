@@ -303,7 +303,7 @@
       <input type="file" id="file-input" class="visually-hidden"
              accept="image/jpeg,image/jpg,image/png,image/webp" />
       <input type="file" id="camera-input" class="visually-hidden"
-             accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" />
+             accept="image/*" capture="environment" />
       <div class="upload__idle" id="upload-idle">
         <div class="upload__icon" aria-hidden="true">
           <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1">
@@ -359,6 +359,7 @@
 
     <div class="recognition-actions story-reveal story-delay-4">
       <button type="button" class="btn btn--primary" id="recognize-btn" disabled>Execute Recognition</button>
+      <button type="button" class="btn btn--ghost btn--sm" id="cancel-rec-btn" hidden>Cancel</button>
       <span class="recognition-actions__status" id="rec-status" role="status" aria-live="polite"></span>
     </div>
 
@@ -653,7 +654,10 @@
       </div>
     </div>
     <div class="modal-foot modal-foot--camera">
-      <button type="button" class="btn btn--quiet btn--sm" id="camera-cancel">Cancel</button>
+      <div class="modal-foot__left">
+        <button type="button" class="btn btn--quiet btn--sm" id="camera-cancel">Cancel</button>
+        <button type="button" class="btn btn--subtle btn--sm" id="camera-fallback-btn" title="Open native device camera app">System Camera</button>
+      </div>
       <button type="button" class="btn btn--primary" id="camera-snap">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="12" cy="12" r="9"/>

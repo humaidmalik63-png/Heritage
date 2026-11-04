@@ -1943,7 +1943,8 @@ select.field__input option { background: #0C0F16; color: var(--text); }
   from { opacity: 0; transform: translateY(18px) scale(.995); }
   to   { opacity: 1; transform: none; }
 }
-.result--unknown { --edge: var(--warn); }
+.result--unknown,
+.result--unavailable { --edge: var(--warn); }
 .result--global  { --edge: var(--accent); }
 
 .result__banner {
@@ -3083,9 +3084,42 @@ select.field__input option { background: #0C0F16; color: var(--text); }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
   padding: 1rem 1.5rem;
   background: rgba(13, 16, 23, 0.98);
   border-top: 1px solid var(--hairline-soft);
+}
+.modal-foot__left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .modal-card--camera {
+    width: 95vw;
+    max-width: 95vw;
+    margin: 1rem auto;
+  }
+  .camera-viewport {
+    aspect-ratio: 4 / 3;
+    max-height: 55vh;
+  }
+  .modal-foot--camera {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+  }
+  .modal-foot__left {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .modal-foot--camera .btn {
+    min-height: 44px;
+    justify-content: center;
+  }
 }
 
 /* ── preference controls ─────────────────────────────────────────────────── */

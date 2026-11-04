@@ -106,6 +106,7 @@ class _MockTransformers:
     AutoModel = None   # set per-test instance
     AutoProcessor = None
     AutoConfig = _MockAutoConfig  # class, so AutoConfig.from_pretrained() works
+    CLIPVisionModelWithProjection = None
 
 
 # Build one shared mock transformers module to inject into sys.modules.

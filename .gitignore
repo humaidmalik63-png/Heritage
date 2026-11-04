@@ -15,3 +15,5 @@ data/raw_candidate/
 data/processed/index/backup/
 data/processed/index/candidate/
 data/processed/index/tmp/
+frontend/frontend/
+*_results.json

@@ -1515,11 +1515,39 @@
   /* ── upload ───────────────────────────────────────────────────────────── */
 
   var fileInput, cameraInput, uploadZone, uploadIdle, uploadPreview, previewImg, previewName, previewSize;
-  var recognizeBtn, recStatus, uploadError, resultRegion;
+  var recognizeBtn, cancelRecBtn, recStatus, uploadError, resultRegion;
   var cameraModal, cameraVideo, cameraSnapBtn, cameraCloseBtn, cameraCancelBtn;
   var activeMediaStream = null;
   var selected = null;          // { file, dataUrl, name, size }
   var busy = false;
+  var recognitionAbortController = null;
+  var abortReason = null;
+  var activeWatchdogTimer = null;
+  var elapsedInterval = null;
+  var FRONTEND_WATCHDOG_MS = 75000; // 75s deadline: allows backend 60s Gemini timeout + 15s network/processing buffer
+
+  function cancelPendingRecognition(reason) {
+    if (activeWatchdogTimer) {
+      window.clearTimeout(activeWatchdogTimer);
+      activeWatchdogTimer = null;
+    }
+    if (elapsedInterval) {
+      window.clearInterval(elapsedInterval);
+      elapsedInterval = null;
+    }
+    if (recognitionAbortController) {
+      abortReason = reason || 'superseded';
+      try { recognitionAbortController.abort(abortReason); } catch (_) {}
+      recognitionAbortController = null;
+    }
+    busy = false;
+    if (cancelRecBtn) cancelRecBtn.hidden = true;
+    if (recognizeBtn) {
+      recognizeBtn.hidden = false;
+      recognizeBtn.disabled = !selected;
+    }
+    if (uploadZone) uploadZone.classList.remove('is-busy');
+  }
 
   function initUpload() {
     fileInput = $('#file-input');
@@ -1531,6 +1559,7 @@
     previewName = $('#preview-name');
     previewSize = $('#preview-size');
     recognizeBtn = $('#recognize-btn');
+    cancelRecBtn = $('#cancel-rec-btn');
     recStatus = $('#rec-status');
     uploadError = $('#upload-error');
     resultRegion = $('#result-region');
@@ -1539,6 +1568,12 @@
     cameraSnapBtn = $('#camera-snap');
     cameraCloseBtn = $('#camera-close');
     cameraCancelBtn = $('#camera-cancel');
+
+    if (cancelRecBtn) {
+      cancelRecBtn.addEventListener('click', function () {
+        cancelPendingRecognition('user_cancelled');
+      });
+    }
 
     // clicking anywhere on the zone opens the picker, except the buttons,
     // which have their own handlers below
@@ -1590,8 +1625,16 @@
 
     if (cameraInput) {
       cameraInput.addEventListener('change', function () {
-        if (cameraInput.files && cameraInput.files[0]) acceptFile(cameraInput.files[0]);
+        if (cameraInput.files && cameraInput.files[0]) acceptFile(cameraInput.files[0], true);
         cameraInput.value = '';
+      });
+    }
+
+    var cameraFallbackBtn = $('#camera-fallback-btn');
+    if (cameraFallbackBtn) {
+      cameraFallbackBtn.addEventListener('click', function () {
+        closeCameraModal();
+        if (cameraInput) cameraInput.click();
       });
     }
 
@@ -1638,28 +1681,36 @@
 
   function triggerCameraCapture() {
     showUploadError('');
-    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                   (window.matchMedia && window.matchMedia('(max-width: 768px)').matches && 'ontouchstart' in window);
+    var hasMediaDevices = Boolean(
+      window.isSecureContext &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === 'function'
+    );
 
-    // On mobile devices, prefer native capture via <input type="file" capture="environment">
-    if (isMobile) {
-      if (cameraInput) {
-        cameraInput.click();
-        return;
-      }
-    }
-
-    // On desktop or when getUserMedia is supported, launch the live viewfinder modal
-    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+    // If getUserMedia is available in a secure context, launch live viewfinder
+    if (hasMediaDevices) {
       openCameraModal();
     } else {
-      if (cameraInput) cameraInput.click();
-      else if (fileInput) fileInput.click();
+      // In insecure contexts or browsers without getUserMedia, use native file capture
+      if (cameraInput) {
+        cameraInput.click();
+      } else if (fileInput) {
+        fileInput.click();
+      }
     }
   }
 
   function openCameraModal() {
     if (!cameraModal || !cameraVideo) return;
+
+    // Clean up any stale active stream before starting a new session
+    if (activeMediaStream) {
+      activeMediaStream.getTracks().forEach(function (track) {
+        try { track.stop(); } catch (_) {}
+      });
+      activeMediaStream = null;
+    }
+
     cameraModal.hidden = false;
     if (cameraSnapBtn) cameraSnapBtn.disabled = true;
 
@@ -1667,8 +1718,8 @@
       audio: false,
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1920, max: 2560 },
-        height: { ideal: 1080, max: 1440 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       }
     };
 
@@ -1683,25 +1734,54 @@
         });
       })
       .catch(function (err) {
-        closeCameraModal();
-        var msg = 'Camera access is unavailable or was denied. Opening file selector instead.';
-        if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
-          msg = 'Camera permission was denied. Select a photo file from your device instead.';
+        // If constraint error on older camera sensor, retry with simple environment video constraint
+        if (err && err.name === 'OverconstrainedError') {
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+            .then(function (stream) {
+              activeMediaStream = stream;
+              cameraVideo.srcObject = stream;
+              cameraVideo.play().then(function () {
+                if (cameraSnapBtn) cameraSnapBtn.disabled = false;
+              });
+            })
+            .catch(function (retryErr) {
+              fallbackToNativeCamera(retryErr);
+            });
+          return;
         }
-        showUploadError(msg);
-        if (fileInput) fileInput.click();
+        fallbackToNativeCamera(err);
       });
+  }
+
+  function fallbackToNativeCamera(err) {
+    closeCameraModal();
+    var msg = '';
+    if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+      msg = 'Camera permission was denied. You can select a photo file or grant camera access in browser settings.';
+    } else if (err && err.name === 'NotFoundError') {
+      msg = 'No camera device was detected on this device.';
+    } else {
+      msg = 'Live camera stream unavailable. Switching to system camera...';
+    }
+    showUploadError(msg);
+
+    // Fall back seamlessly to Method A (native camera file input)
+    if (cameraInput) {
+      cameraInput.click();
+    } else if (fileInput) {
+      fileInput.click();
+    }
   }
 
   function closeCameraModal() {
     if (activeMediaStream) {
       activeMediaStream.getTracks().forEach(function (track) {
-        track.stop();
+        try { track.stop(); } catch (_) {}
       });
       activeMediaStream = null;
     }
     if (cameraVideo) {
-      cameraVideo.pause();
+      try { cameraVideo.pause(); } catch (_) {}
       cameraVideo.srcObject = null;
     }
     if (cameraModal) {
@@ -1728,21 +1808,27 @@
       // Cleanly stop video tracks immediately to turn off camera hardware
       closeCameraModal();
 
+      var filename = 'monument-camera-' + Date.now() + '.jpg';
       if (canvas.toBlob) {
         canvas.toBlob(function (blob) {
           if (!blob) {
             showUploadError('Failed to capture frame from camera.');
             return;
           }
-          var filename = 'monument-camera-' + Date.now() + '.jpg';
           var file = new File([blob], filename, { type: 'image/jpeg', lastModified: Date.now() });
-          acceptFile(file);
+          acceptFile(file, true);
         }, 'image/jpeg', 0.92);
       } else {
         var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         downscale(dataUrl).then(function (payload) {
-          var mockFile = { name: 'monument-camera.jpg', size: Math.round(dataUrl.length * 0.75), type: 'image/jpeg' };
-          selected = { file: mockFile, dataUrl: payload, name: mockFile.name, size: mockFile.size };
+          var mockFile = { name: filename, size: Math.round(dataUrl.length * 0.75), type: 'image/jpeg' };
+          selected = {
+            file: mockFile,
+            dataUrl: payload,
+            name: mockFile.name,
+            size: mockFile.size,
+            isCamera: true
+          };
           previewImg.src = payload;
           previewName.textContent = mockFile.name;
           previewSize.textContent = bytes(selected.size) + ' · CAMERA CAPTURE';
@@ -1817,10 +1903,19 @@
     return canvas.toDataURL('image/jpeg', 0.82);
   }
 
-  function acceptFile(file) {
+  function acceptFile(file, isCamera) {
+    cancelPendingRecognition('superseded');
     showUploadError('');
 
-    if (ACCEPTED.indexOf(file.type) < 0) {
+    var type = (file && file.type) || '';
+    var name = (file && file.name) || '';
+    var isAcceptable = ACCEPTED.indexOf(type) >= 0 ||
+                       /\.(jpe?g|png|webp)$/i.test(name) ||
+                       type === '' ||
+                       type === 'image/pjpeg' ||
+                       type === 'application/octet-stream';
+
+    if (!isAcceptable) {
       showUploadError('Unsupported file type. Choose a JPG, PNG or WebP image.');
       return;
     }
@@ -1833,18 +1928,25 @@
       return;
     }
 
+    var isFromCamera = Boolean(isCamera || (name && name.indexOf('monument-camera') === 0));
+
     var reader = new FileReader();
     reader.onerror = function () { showUploadError('That file could not be read from disk.'); };
     reader.onload = function () {
       var dataUrl = String(reader.result);
       downscale(dataUrl).then(function (payload) {
-        selected = { file: file, dataUrl: payload, name: file.name, size: file.size };
+        selected = { file: file, dataUrl: payload, name: file.name, size: file.size, isCamera: isFromCamera };
         previewImg.src = payload;
-        previewImg.alt = 'Preview of the uploaded image: ' + file.name;
+        previewImg.alt = 'Preview of ' + (isFromCamera ? 'captured monument photo' : 'the uploaded image') + ': ' + file.name;
         previewName.textContent = file.name;
         var note = bytes(file.size);
-        if (payload !== dataUrl) note += ' · sent at reduced resolution';
-        note += ' · ' + (file.type.replace('image/', '').toUpperCase());
+        if (payload !== dataUrl) note += ' · optimized';
+        if (isFromCamera) {
+          note += ' · CAMERA';
+        } else {
+          var displayType = (file.type ? file.type.replace('image/', '') : 'JPG').toUpperCase();
+          note += ' · ' + displayType;
+        }
         previewSize.textContent = note;
         uploadIdle.hidden = true;
         uploadPreview.hidden = false;
@@ -1859,6 +1961,7 @@
   }
 
   function clearSelection() {
+    cancelPendingRecognition();
     selected = null;
     previewImg.removeAttribute('src');
     previewImg.alt = '';
@@ -1926,16 +2029,45 @@
       return;
     }
 
+    cancelPendingRecognition('superseded');
+    abortReason = null;
+    var controller = new AbortController();
+    recognitionAbortController = controller;
+
     busy = true;
     recognizeBtn.disabled = true;
+    recognizeBtn.hidden = true;
+    if (cancelRecBtn) {
+      cancelRecBtn.hidden = false;
+      cancelRecBtn.disabled = false;
+    }
     uploadZone.classList.add('is-busy');
     recStatus.className = 'recognition-actions__status is-busy';
     resultRegion.innerHTML = '';
 
     resetPipeline();
     setStage('image');
-    stageTimers.push(window.setTimeout(function () { setStage('analysis'); }, 450));
-    stageTimers.push(window.setTimeout(function () { setStage('match'); }, 1400));
+
+    var startTime = Date.now();
+    recStatus.textContent = 'Checking local heritage catalogue... (0s)';
+
+    // Real-time progressive feedback with truthful elapsed second ticker
+    elapsedInterval = window.setInterval(function () {
+      if (!busy) return;
+      var sec = Math.floor((Date.now() - startTime) / 1000);
+      if (sec < 2) {
+        recStatus.textContent = 'Checking local heritage catalogue... (' + sec + 's)';
+      } else if (sec < 4) {
+        setStage('analysis');
+        recStatus.textContent = 'Analyzing architectural visual features... (' + sec + 's)';
+      } else if (sec < 8) {
+        setStage('match');
+        recStatus.textContent = 'Using external image identification... (' + sec + 's)';
+      } else {
+        setStage('match');
+        recStatus.textContent = 'Still analyzing your photograph... (' + sec + 's)';
+      }
+    }, 1000);
 
     var payload = { image_base64: selected.dataUrl, question: '', top_k: 5 };
 
@@ -1943,12 +2075,23 @@
       file_size_bytes: selected.file ? selected.file.size : 0
     });
 
+    // 75-second watchdog timer: coordinates with backend (60s Gemini + 15s network/processing buffer)
+    activeWatchdogTimer = window.setTimeout(function () {
+      if (recognitionAbortController === controller) {
+        abortReason = 'timeout';
+        controller.abort('timeout');
+      }
+    }, FRONTEND_WATCHDOG_MS);
+
     fetch(API_BASE + '/recognize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     })
       .then(function (res) {
+        if (activeWatchdogTimer) { window.clearTimeout(activeWatchdogTimer); activeWatchdogTimer = null; }
+        if (elapsedInterval) { window.clearInterval(elapsedInterval); elapsedInterval = null; }
         return res.json()
           .catch(function () { return null; })
           .then(function (body) { return { ok: res.ok, status: res.status, body: body }; });
@@ -1960,15 +2103,31 @@
       })
       .then(function (data) {
         clearStageTimers();
+        if (elapsedInterval) { window.clearInterval(elapsedInterval); elapsedInterval = null; }
         setStage('evidence');
         renderResult(data);
         completePipeline();
         var isGlobal = data.recognition_source === 'gemini' || data.recognition_source === 'ollama';
-        recStatus.textContent = data.recognition_source === 'unknown' ? 'Not confirmed'
-          : (isGlobal && (!data.global_identification || data.global_identification.unknown || !data.global_identification.site_name)) ? 'Not confirmed'
-          : isGlobal ? 'Identified (External Recognition)'
-          : 'Complete';
-        recStatus.className = 'recognition-actions__status';
+        var isUnavailable = data.recognition_status === 'external_service_unavailable' ||
+          (data.global_identification && (data.global_identification.status === 'external_service_unavailable' || data.global_identification.error_type === 'service_unavailable')) ||
+          (data.reason && data.reason.indexOf('HTTP 503') !== -1);
+
+        if (isUnavailable) {
+          recStatus.textContent = 'Service Unavailable';
+          recStatus.className = 'recognition-actions__status is-err';
+        } else if (data.recognition_source === 'unknown') {
+          recStatus.textContent = 'Not confirmed';
+          recStatus.className = 'recognition-actions__status';
+        } else if (isGlobal && (!data.global_identification || data.global_identification.unknown || !data.global_identification.site_name)) {
+          recStatus.textContent = 'Not confirmed';
+          recStatus.className = 'recognition-actions__status';
+        } else if (isGlobal) {
+          recStatus.textContent = 'Identified (External Recognition)';
+          recStatus.className = 'recognition-actions__status';
+        } else {
+          recStatus.textContent = 'Complete';
+          recStatus.className = 'recognition-actions__status';
+        }
 
         trackEvent('recognition_completed', {
           recognition_source: data.recognition_source,
@@ -1977,32 +2136,97 @@
         });
       })
       .catch(function (err) {
+        if (activeWatchdogTimer) { window.clearTimeout(activeWatchdogTimer); activeWatchdogTimer = null; }
+        if (elapsedInterval) { window.clearInterval(elapsedInterval); elapsedInterval = null; }
         clearStageTimers();
         resetPipeline();
+
+        if (abortReason === 'superseded') {
+          return;
+        }
+
+        var isAbort = err && (err.name === 'AbortError' || err.code === 20);
         var code = err && err.code;
-        // A fetch() network failure rejects with a TypeError and carries no
-        // status, so it is matched by type rather than by status code.
-        var offline = err instanceof TypeError || (err && err.status === 0);
-        var targetHint = API_BASE ? (' at ' + API_BASE) : '';
-        var message = ERROR_MESSAGES[code] ||
-          (offline
-            ? 'The recognition service could not be reached' + targetHint + '. Is your backend running and reachable?'
-            : 'Recognition could not be completed. Please try again.');
-        recStatus.textContent = 'Failed';
+        var isOffline = !isAbort && (err instanceof TypeError || (err && err.status === 0) || !navigator.onLine);
+        var isQuota = (err && err.status === 429) || (code === 'rate_limited') || (err && err.detail && String(err.detail).indexOf('Rate limit') !== -1);
+        var isServiceUnavailable = (err && err.status === 503) || (code === 'service_unavailable') || (err && err.detail && String(err.detail).indexOf('503') !== -1);
+        var isTimeout = abortReason === 'timeout' || (err && (err.status === 504 || code === 'timeout'));
+        var isUserCancelled = abortReason === 'user_cancelled';
+
+        var statusText = 'Failed';
+        var heading = 'Recognition Status';
+        var message = '';
+
+        if (isUserCancelled) {
+          statusText = 'Cancelled';
+          heading = 'Recognition Cancelled';
+          message = 'Recognition request was cancelled. Your photograph is preserved and ready to analyze again.';
+        } else if (isServiceUnavailable) {
+          statusText = 'Service Unavailable';
+          heading = 'EXTERNAL IDENTIFICATION TEMPORARILY UNAVAILABLE';
+          message = 'The external recognition service is temporarily unavailable. Your photograph has been preserved. Please try again shortly.';
+        } else if (isTimeout) {
+          statusText = 'Timed Out';
+          heading = 'Recognition Timed Out';
+          message = 'Recognition request timed out after 75 seconds. The external identification service may be experiencing high demand. Click Retry to run recognition again without re-uploading.';
+        } else if (isQuota) {
+          statusText = 'Quota Reached';
+          heading = 'Service Rate Limited';
+          message = 'External vision API rate limit or quota reached. Please wait a brief moment and click Retry.';
+        } else if (isOffline) {
+          statusText = 'Backend Offline';
+          heading = 'Backend Service Offline';
+          message = 'The recognition service could not be reached at ' + (API_BASE || 'http://127.0.0.1:8000') + '. Is your Python backend running?';
+        } else {
+          statusText = 'Failed';
+          heading = 'Recognition Failed';
+          message = ERROR_MESSAGES[code] || (err && err.detail) || 'Recognition could not be completed. Please try again.';
+        }
+
+        recStatus.textContent = statusText;
         recStatus.className = 'recognition-actions__status is-err';
         resultRegion.innerHTML = '';
-        resultRegion.appendChild(errorPanel(message, offline));
+        resultRegion.appendChild(errorPanel(message, isOffline, runRecognition, 'Retry Recognition', heading));
 
         trackEvent('recognition_failed', {
-          code: code || 'network_error',
-          offline: offline
+          code: isAbort ? (abortReason || 'timeout_or_aborted') : (code || 'network_error'),
+          offline: isOffline
         });
       })
       .then(function () {
+        if (activeWatchdogTimer) { window.clearTimeout(activeWatchdogTimer); activeWatchdogTimer = null; }
+        if (elapsedInterval) { window.clearInterval(elapsedInterval); elapsedInterval = null; }
+        if (recognitionAbortController === controller) {
+          recognitionAbortController = null;
+        }
         busy = false;
-        recognizeBtn.disabled = !selected;
+        if (cancelRecBtn) cancelRecBtn.hidden = true;
+        if (recognizeBtn) {
+          recognizeBtn.hidden = false;
+          recognizeBtn.disabled = !selected;
+        }
         uploadZone.classList.remove('is-busy');
       });
+  }
+
+  // Exposed for automated test harnesses
+  if (typeof window !== 'undefined') {
+    window.__heritageTest = {
+      cancelPendingRecognition: cancelPendingRecognition,
+      getAbortController: function () { return recognitionAbortController; },
+      getActiveController: function () { return recognitionAbortController; },
+      triggerWatchdog: function () {
+        if (recognitionAbortController) {
+          abortReason = 'timeout';
+          recognitionAbortController.abort('timeout');
+        }
+      },
+      setAbortReason: function (r) { abortReason = r; },
+      runRecognition: runRecognition,
+      isBusy: function () { return busy; },
+      getSelected: function () { return selected; },
+      FRONTEND_WATCHDOG_MS: FRONTEND_WATCHDOG_MS
+    };
   }
 
   function renderApiConnector() {
@@ -2102,11 +2326,23 @@
     return box;
   }
 
-  function errorPanel(message, isOffline) {
+  function errorPanel(message, isOffline, retryAction, actionLabel, titleText) {
     var card = el('div', 'result result--unknown');
     var body = el('div', 'result__body');
-    body.appendChild(el('p', 'result__label', isOffline ? 'Backend Service Offline' : 'Recognition unavailable'));
+    body.appendChild(el('p', 'result__label', titleText || (isOffline ? 'Backend Service Offline' : 'Recognition Status')));
     body.appendChild(el('p', 'result__text', message));
+    if (retryAction) {
+      var actWrap = el('div', 'upload__actions');
+      actWrap.style.marginTop = '1.25rem';
+      var retryBtn = el('button', 'btn btn--primary btn--sm', actionLabel || 'Retry Recognition');
+      retryBtn.type = 'button';
+      retryBtn.id = 'retry-rec-btn';
+      retryBtn.addEventListener('click', function () {
+        retryAction();
+      });
+      actWrap.appendChild(retryBtn);
+      body.appendChild(actWrap);
+    }
     if (isOffline) {
       body.appendChild(renderApiConnector());
     }
@@ -2386,6 +2622,84 @@
     var isGeminiUnknown = isGemini && (!g || g.unknown === true || g.identified === false || !g.site_name);
     var isUnknown = source === 'unknown' || isGeminiUnknown;
 
+    var status = data.recognition_status || (g && (g.status || g.error_type)) || null;
+    var isServiceUnavailable = status === 'external_service_unavailable' ||
+      (g && (g.status === 'external_service_unavailable' || g.error_type === 'service_unavailable')) ||
+      (data.reason && data.reason.indexOf('HTTP 503') !== -1) ||
+      (data.reason && data.reason.indexOf('temporarily unavailable') !== -1);
+
+    /* --- EXTERNAL SERVICE UNAVAILABLE (HTTP 503) ------------------------- */
+    if (isServiceUnavailable) {
+      card.classList.add('result--unavailable', 'result--unknown');
+
+      var banner = el('div', 'result__banner');
+      banner.appendChild(el('span', 'result__badge', 'External Identification Temporarily Unavailable'));
+      card.appendChild(banner);
+
+      var body = el('div', 'result__body');
+
+      var uHead = el('div', 'result__headline');
+      uHead.appendChild(el('p', 'result__verdict', 'External Service Unavailable'));
+      uHead.appendChild(el('h3', 'result__name', 'EXTERNAL IDENTIFICATION TEMPORARILY UNAVAILABLE'));
+      body.appendChild(uHead);
+
+      var descText = el('p', 'result__text', 'The external recognition service is temporarily unavailable. Your photograph has been preserved. Please try again shortly.');
+      body.appendChild(descText);
+
+      /* Diagnostic Metrics - transparently display similarity metrics without fabricating percentages */
+      var diagWrap = el('div', 'result__metrics');
+      diagWrap.style.display = 'flex';
+      diagWrap.style.flexWrap = 'wrap';
+      diagWrap.style.gap = '1.5rem';
+      diagWrap.style.alignItems = 'flex-start';
+
+      var topSim = typeof data.similarity === 'number' ? data.similarity : null;
+      if (typeof topSim === 'number' && isFinite(topSim)) {
+        var uSim = el('div', 'result__confidence');
+        uSim.appendChild(el('p', 'result__label', 'Top CLIP Cosine Similarity'));
+        uSim.appendChild(el('p', 'result__confidence-value', topSim.toFixed(4)));
+        diagWrap.appendChild(uSim);
+      }
+
+      if (typeof data.margin === 'number' && isFinite(data.margin)) {
+        var uMargin = el('div', 'result__confidence');
+        uMargin.appendChild(el('p', 'result__label', 'Competitor Margin'));
+        var uMarginStr = (data.margin >= 0 ? '+' : '') + data.margin.toFixed(4);
+        uMargin.appendChild(el('p', 'result__confidence-value', uMarginStr));
+        diagWrap.appendChild(uMargin);
+      }
+
+      var uGate = el('div', 'result__confidence');
+      uGate.appendChild(el('p', 'result__label', 'Local Catalogue Gate'));
+      uGate.appendChild(el('p', 'result__confidence-value', 'Fallback Triggered'));
+      diagWrap.appendChild(uGate);
+
+      if (diagWrap.children.length > 0) {
+        body.appendChild(diagWrap);
+      }
+
+      var uAbout = el('div', 'result__stack');
+      uAbout.appendChild(el('p', 'result__text', 'Local catalogue verification did not match an indexed site with sufficient confidence. The external vision fallback encountered a temporary service outage (HTTP 503) and was unable to complete the analysis. Your query photograph has been preserved in memory and is ready to retry.'));
+      body.appendChild(section('Diagnostic Status', uAbout));
+
+      /* Retry button preserving uploaded photo */
+      var actWrap = el('div', 'upload__actions');
+      actWrap.style.marginTop = '1.25rem';
+      var retryBtn = el('button', 'btn btn--primary btn--sm', 'Retry Recognition');
+      retryBtn.type = 'button';
+      retryBtn.id = 'retry-rec-btn';
+      retryBtn.addEventListener('click', function () {
+        runRecognition();
+      });
+      actWrap.appendChild(retryBtn);
+      body.appendChild(actWrap);
+
+      card.appendChild(body);
+      resultRegion.innerHTML = '';
+      resultRegion.appendChild(card);
+      return;
+    }
+
     card.classList.add(
       source === 'local' ? 'result--local' : (isGemini && !isGeminiUnknown) ? 'result--global' : 'result--unknown'
     );
@@ -2446,9 +2760,15 @@
       var uAbout = el('div', 'result__stack');
       var explanation = (g && (g.visual_evidence || g.reason)) ||
         (data.reason ? (REASON_TEXT[data.reason] || data.reason) : null) ||
-        'This photograph did not meet the verification thresholds for indexed catalogue monuments (similarity ≥ 0.8500, margin ≥ 0.1000), and external vision fallback did not establish a grounded identification.';
+        'This photograph did not meet the verification thresholds for indexed catalogue monuments (similarity >= 0.8500, margin >= 0.1000), and external vision fallback did not establish sufficient distinctive architectural evidence to confirm an identification.';
       uAbout.appendChild(el('p', 'result__text', explanation));
 
+      if (g && g.visual_category && g.visual_category !== 'unknown') {
+        uAbout.appendChild(field('Visual classification', g.visual_category.replace(/_/g, ' ')));
+      }
+      if (g && g.evidence_tier) {
+        uAbout.appendChild(field('Evidence tier', g.evidence_tier));
+      }
       if (g && g.limitations) {
         uAbout.appendChild(field('Limitations', g.limitations));
       }
@@ -2590,57 +2910,48 @@
     if (gPlace) gHead.appendChild(el('p', 'result__place', gPlace));
     body.appendChild(gHead);
 
-    /* External Identification: Recognition Score */
+    /* External Identification: Visual Evidence Status & Qualitative Assessment */
     var confBox = el('div', 'result__confidence result__confidence--gemini');
 
     var confHeader = el('div', 'result__confidence-header');
-    confHeader.appendChild(el('p', 'result__label', 'Recognition Score'));
+    confHeader.appendChild(el('p', 'result__label', 'Visual Evidence Assessment'));
 
+    var tier = (g && g.evidence_tier) || 'moderate';
     var rawConf = (typeof g.confidence === 'number' && isFinite(g.confidence) && g.confidence > 0)
       ? g.confidence
       : (typeof data.confidence === 'number' && isFinite(data.confidence) && data.confidence > 0)
       ? data.confidence
       : null;
 
-    if (rawConf != null) {
-      // Scale to percentage from actual model estimate; cap at 99% to avoid misleading 100% calibrated certainty claims
-      var pctValue = Math.min(99, Math.max(1, Math.round(rawConf * 100)));
-      var pctText = pctValue + '%';
+    var ratingLabel = 'Moderate Evidence';
+    var ratingClass = 'moderate';
+    var ratingDetail = 'Characteristic architectural features visible in photograph';
 
-      var ratingLabel = 'Low';
-      var ratingClass = 'low';
-      if (pctValue >= 85) {
-        ratingLabel = 'High';
-        ratingClass = 'high';
-      } else if (pctValue >= 60) {
-        ratingLabel = 'Moderate';
-        ratingClass = 'moderate';
-      }
-
-      confHeader.appendChild(el('span', 'confidence-tag confidence-tag--' + ratingClass, ratingLabel));
-      confBox.appendChild(confHeader);
-
-      var confRow = el('div', 'result__confidence-row');
-      confRow.appendChild(el('p', 'result__confidence-value', pctText));
-      confBox.appendChild(confRow);
-
-      var bar = el('div', 'confidence-bar');
-      bar.setAttribute('role', 'progressbar');
-      bar.setAttribute('aria-valuenow', String(pctValue));
-      bar.setAttribute('aria-valuemin', '0');
-      bar.setAttribute('aria-valuemax', '100');
-
-      var barFill = el('div', 'confidence-bar__fill confidence-bar__fill--' + ratingClass);
-      barFill.style.width = pctValue + '%';
-      bar.appendChild(barFill);
-      confBox.appendChild(bar);
-    } else {
-      confBox.appendChild(confHeader);
-      confBox.appendChild(el('p', 'result__confidence-value result__confidence-value--unavailable', 'Score unavailable'));
+    if (tier === 'substantial' || (rawConf != null && rawConf >= 0.80)) {
+      ratingLabel = 'Substantial Evidence';
+      ratingClass = 'high';
+      ratingDetail = 'Multiple distinctive monument architectural features verified';
+    } else if (tier === 'limited' || (rawConf != null && rawConf < 0.65)) {
+      ratingLabel = 'Limited Evidence';
+      ratingClass = 'low';
+      ratingDetail = 'Partial or distant architectural features observed';
     }
 
+    confHeader.appendChild(el('span', 'confidence-tag confidence-tag--' + ratingClass, ratingLabel));
+    confBox.appendChild(confHeader);
+
+    var confRow = el('div', 'result__confidence-row');
+    confRow.appendChild(el('p', 'result__confidence-value', ratingLabel));
+    confBox.appendChild(confRow);
+
+    var detailText = el('p', 'result__confidence-detail', ratingDetail);
+    detailText.style.fontSize = '0.825rem';
+    detailText.style.color = 'var(--text-2)';
+    detailText.style.margin = '0.25rem 0 0.5rem';
+    confBox.appendChild(detailText);
+
     var disclaimer = el('p', 'confidence-disclaimer',
-      'External visual estimate; not independently verified against the local catalogue.'
+      'External visual estimate; qualitative architectural assessment based on visible monument features, not a calibrated statistical probability.'
     );
     confBox.appendChild(disclaimer);
     body.appendChild(confBox);

@@ -86,8 +86,17 @@ def _repo(tmp_path):
     return EvidenceRepository(meta, ev)
 
 
+class _MockGeminiVisionClient:
+    async def identify_monument(self, *args, **kwargs):
+        from backend.gemini import fallback_unknown_result, REASON_LOW_SIMILARITY
+        return fallback_unknown_result(reason=REASON_LOW_SIMILARITY, visual_category="unknown")
+
+    async def close(self):
+        pass
+
+
 def _service(repo, embedding=(1.0, 0.0, 0.0, 0.0), provider=None, fail_on=None,
-             index_vectors=None, threshold=0.65):
+             index_vectors=None, threshold=0.65, gemini_client=None):
     # Default index vectors are *not* orthonormal against the query, so a
     # wrong-direction query genuinely scores low.
     if index_vectors is None:
@@ -106,6 +115,7 @@ def _service(repo, embedding=(1.0, 0.0, 0.0, 0.0), provider=None, fail_on=None,
         repository=repo,
         extractor=_StubExtractor(embedding, fail_on=fail_on),
         provider=provider,
+        gemini_client=gemini_client or _MockGeminiVisionClient(),
     )
 
 

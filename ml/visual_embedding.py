@@ -48,7 +48,7 @@ def _load_model(device: Optional[str] = None) -> None:
             "https://download.pytorch.org/whl/cpu"
         )
     import gc
-    from transformers import CLIPVisionModelWithProjection, AutoModel, AutoProcessor, AutoConfig
+    from transformers import AutoModel, AutoProcessor, AutoConfig
 
     # Determine device
     if device is None:
